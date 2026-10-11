@@ -2,6 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Live%20on%20Vercel-success?style=for-the-badge&logo=vercel" alt="Vercel Status" />
+  <img src="https://img.shields.io/badge/Food%20Safety%20Gate-WHO%20%E2%80%A2%20Kemenkes%20%E2%80%A2%20BPOM-teal?style=for-the-badge" alt="Food Safety Gate" />
   <img src="https://img.shields.io/badge/React-19.2-61dafb?style=for-the-badge&logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-8.3-646CFF?style=for-the-badge&logo=vite" alt="Vite" />
   <img src="https://img.shields.io/badge/TailwindCSS-3.4-38bdf8?style=for-the-badge&logo=tailwindcss" alt="Tailwind CSS" />
@@ -23,10 +24,10 @@
 
 **REPLATE** adalah platform manajemen dan penyelamatan surplus pangan cerdas (*Intelligent Food Surplus Routing & Upstream Prevention Platform*). Platform ini dirancang untuk menjembatani bisnis F&B, hotel, katering, restoran, dan penyelenggara acara dengan ekosistem penyelamatan makanan (bank makanan, panti asuhan, dapur sosial, dan pengolah kompos).
 
-REPLATE tidak hanya membantu menyalurkan makanan berlebih ke hilir, tetapi juga menganalisis pola surplus berulang agar pelaku usaha dapat **mencegah pemborosan di hulu (*upstream prevention*)**, menghemat anggaran operasional dapur, dan menekan emisi gas rumah kaca.
+REPLATE menerapkan arsitektur bertahap dengan gerbang pemeriksaan awal **Food Safety Gate** yang mengutamakan keselamatan publik sebelum sistem memberikan rekomendasi konsumsi manusia:
 
 ```text
-SURPLUS LAPORAN ➔ PENILAIAN SKOR ➔ RUTE HIERARKI ➔ REKOMENDASI MITRA ➔ PELACAKAN LOGISTIK ➔ DAMPAK ESG & WAWASAN
+REPORT SURPLUS ➔ FOOD SAFETY GATE ➔ RESCUE SCORE ➔ ROUTE ENGINE ➔ MATCHING ENGINE ➔ FOOD JOURNEY ➔ IMPACT
 ```
 
 ---
@@ -39,56 +40,73 @@ SURPLUS LAPORAN ➔ PENILAIAN SKOR ➔ RUTE HIERARKI ➔ REKOMENDASI MITRA ➔ P
 2. **Keterbatasan Waktu & Kebingungan Dapur (*Shelf-Life Crisis*):**
    * Makanan siap santap memiliki masa simpan kritis (beberapa jam sebelum basi).
    * Restoran dan katering sering kali tidak memiliki saluran distribusi cepat, sehingga opsi tercepat yang diambil adalah langsung membuangnya ke TPA.
-3. **Krisis Iklim dari Gas Metana ($CH_4$):**
-   * Makanan organik yang membusuk di TPA tanpa oksigen menghasilkan gas metana, yang memiliki potensi pemanasan global puluhan kali lipat lebih agresif daripada $CO_2$.
-4. **Tanpa Evaluasi Pencegahan (*Over-Ordering* Berulang):**
-   * Dapur komersial sering mengalami kelebihan porsi yang sama berulang kali karena tidak memiliki data analitik untuk memperbaiki perencanaan belanja bahan baku.
+3. **Risiko Keamanan Pangan & Penyakit Bawaan Makanan (*Foodborne Illness*):**
+   * Penyelamatan makanan tanpa verifikasi suhu dan riwayat penyimpanan berisiko memicu kontaminasi bakteri berbahaya (*Salmonella, E. coli, Bacillus cereus*).
+   * Rescue Score yang tinggi untuk porsi besar tidak boleh mengesampingkan parameter keamanan pangan.
+4. **Krisis Iklim dari Gas Metana ($CH_4$):**
+   * Makanan organik yang membusuk di TPA tanpa oksigen menghasilkan gas metana yang memiliki potensi pemanasan global puluhan kali lipat lebih agresif daripada $CO_2$.
+5. **Tanpa Evaluasi Pencegahan (*Over-Ordering* Berulang):**
+   * Dapur komersial sering mengalami kelebihan porsi yang sama berulang kali karena tidak memiliki data analitik untuk memperbaiki perencanaan belanja bahan baku di hulu (*upstream*).
+
+---
+
+## 🛡️ Inovasi: Food Safety Gate
+
+**Food Safety Gate** adalah gerbang pemeriksaan deterministik berbasis aturan yang memeriksa kelayakan surplus sebelum rekomendasi konsumsi manusia dibuka.
+
+> **PENTING:** Food Safety Gate BUKAN sertifikasi keamanan pangan resmi dan bukan pengganti inspeksi fisik oleh petugas yang berwenang. Status **PASS** didefinisikan secara transparan sebagai *"Lolos pemeriksaan awal berdasarkan informasi yang dimasukkan pengguna"*.
+
+### Parameter Pemeriksaan (6 Parameter Inti):
+1. **Jenis Pangan:** Aturan penyimpanan dan ambang batas disesuaikan spesifik per kategori (makanan matang, bakery, produk susu, daging/ikan, produk segar, dan makanan kemasan).
+2. **Kondisi Fisik Sensoris:** Memeriksa ada tidaknya perubahan warna, bau abnormal, lendir, atau jamur. Tanda kerusakan jelas langsung memicu `REJECT`.
+3. **Riwayat Penyimpanan & Suhu Holding:** Memverifikasi pengendalian suhu (*hot holding* >60°C atau *cold chain* <4°C) untuk mencegah proliferasi bakteri di *Temperature Danger Zone* (5°C–60°C).
+4. **Waktu Penyiapan & Kedaluwarsa:** Validasi tanggal dan waktu tidak logis. Produk melewati tanggal kedaluwarsa ('Baik Digunakan Sebelum') otomatis memicu `REJECT`.
+5. **Integritas Kemasan (Prinsip Cek KLIK BPOM):** Memeriksa keutuhan wadah, segel, dan kaleng kembung/penyok parah.
+6. **Higiene Penanganan & Pemisahan:** Memverifikasi pemisahan dari bahan mentah untuk mencegah kontaminasi silang.
+
+### Sistem Status:
+* 🟢 **PASS:** Lolos pemeriksaan awal. Memenuhi syarat untuk dilanjutkan ke penilaian prioritas Rescue Score dan rute konsumsi manusia.
+* 🟡 **REVIEW:** Data penting belum lengkap atau riwayat suhu tidak diketahui. Rekomendasi penyaluran konsumsi **DITAHAN sementara**.
+* 🔴 **REJECT:** Melanggar standar keamanan pangan dasar. Rekomendasi redistribusi konsumsi **DIBLOKIR permanen**. Dialihkan terpisah ke pengomposan biologis atau pembuangan aman.
+
+### Rujukan Sumber Regulasi Resmi:
+1. **World Health Organization (WHO):** [Food Safety Fact Sheet](https://www.who.int/news-room/fact-sheets/detail/food-safety) & [Public Health Advice on Food Safety](https://www.who.int/news-room/fact-sheets/item/public-health-advice-on-food-safety-during-summer).
+2. **Kementerian Kesehatan Republik Indonesia:** [Portal Kemkes](https://kemkes.go.id/) & [JDIH Kemenkes](https://jdih.kemkes.go.id/) (Permenkes Higiene Sanitasi Jasaboga).
+3. **Badan Pengawas Obat dan Makanan (BPOM RI):** [Keamanan Pangan & Pedoman Cek KLIK](https://www.pom.go.id/berita/keamanan-pangan-jajanan-anak-sekolah-%28pjas%29).
 
 ---
 
 ## ✨ Fitur-Fitur Utama Platform
 
 ### 1. 🏠 Beranda Interaktif (*Home*)
-* Ringkasan visi, indikator cepat, dan visualisasi alur hierarki penyelamatan makanan (*Food Recovery Hierarchy*).
-* Navigasi instan menuju pelaporan surplus.
+* Ringkasan visi, indikator cepat, alur 7 tahap penyelamatan, dan tombol aksi cepat.
 
 ### 2. 📝 Lapor Surplus Cepat (*Report Surplus*)
-* Formulir input cerdas dengan preset siap pakai (contoh: *Nasi Kotak Katering*, *Sayuran Segar*, *Roti Sisa Toko*).
-* Pencatatan parameter keamanan pangan: jenis makanan, kuantitas/satuan, sisa jam layak aman, kondisi kemasan, status suhu penyimpanan, dan konteks kegiatan asal.
+* Formulir input dengan 6 parameter Food Safety Gate, preset instan (Nasi, Sayur, Roti), dan validasi waktu penyiapan.
 
 ### 3. ⚖️ Penilaian Cerdas & Algoritma Rescue Score (*Assessment*)
-* **Algoritma Rescue Score (0–100):** Mesin penilaian deterministik tanpa halusinasi yang mengukur viabilitas pangan berdasarkan sisa waktu, higienitas kemasan, dan stabilitas suhu.
-* **Penentuan Rute Hierarki Otomatis:**
-  * 🟢 **Distribusi Langsung:** Penyaluran makanan siap konsumsi ke bank makanan, panti, atau komunitas.
-  * 🟡 **Pengolahan Kembali (*Repurpose*):** Transformasi bahan baku/sayuran menjadi hidangan baru bernilai tambah di dapur sosial.
-  * 🟠 **Diversi Organik (Pakan Ternak / Kompos):** Penanganan biologis yang aman saat makanan sudah melampaui batas konsumsi manusia.
-* **Pencocokan Mitra Cerdas (*Smart Partner Matching*):** Menyarankan mitra terdekat dengan mempertimbangkan radius jarak, kapasitas penampungan, dan kecepatan respons penjemputan.
+* **Food Safety Gate Card Teratas:** Status visual, ringkasan hasil, rincian 6 parameter, dan tombol edit parameter di tempat.
+* **Rescue Score (0–100):** Mesin penilaian deterministik (Kondisi 30%, Urgensi 25%, Volume 15%, Kemudahan Distribusi 15%, Kecocokan Tujuan 15%). Jika status `REVIEW` atau `REJECT`, skor konsumsi ditahan/dibatalkan.
+* **Rute Hierarki Pangan:**
+  * 🟢 **Distribusi Langsung:** Penyaluran makanan siap santap ke bank makanan/panti.
+  * 🟡 **Pengolahan Kembali (*Repurpose*):** Transformasi bahan baku menjadi produk kuliner bernilai tambah.
+  * 🟠 **Pengalihan Organik (Kompos / Bio-Energi):** Khusus sisa organik rusak untuk pencegahan gas metana.
+  * 🔴 **Pembuangan Terkendali (*Safe Disposal*):** Penanganan limbah berkemasan berbahaya/terkontaminasi.
 
-### 4. 🚚 Alur Pelacakan Logistik (*Journey & Custody Tracking*)
-* Memantau status penanganan makanan surplus secara bertahap:
-  1. *Menunggu Konfirmasi*
-  2. *Mitra Ditugaskan*
-  3. *Dalam Penjemputan / Logistik*
-  4. *Berhasil Disalurkan & Terselamatkan*
-* Antarmuka interaktif untuk memperbarui status pengiriman secara transparan.
+### 4. 🤝 Pencocokan Mitra Cerdas (*Smart Matching Engine*)
+* Memasangkan surplus dengan mitra terdekat berdasarkan rute, kapasitas penerimaan, dan jam operasional. Mitra konsumsi manusia otomatis disaring jika surplus berstatus `REJECT`.
 
-### 5. 🌍 Kalkulator Dampak Nyata (*Impact & ESG Analytics*)
-* Mengonversi surplus makanan yang terselamatkan menjadi indikator metrik nyata:
-  * **Kilogram Pangan Terselamatkan**
-  * **Porsi Makanan Terpenuhi** (standar GFN: 0.35 kg/porsi)
-  * **Emisi $CO_2e$ yang Dicegah** (metodologi US EPA WARM: 2.5 kg $CO_2e$/kg makanan)
-  * **Nilai Ekonomi Rupiah (Rp)** yang diselamatkan dari pemborosan.
-  * **Ekuivalensi Lingkungan:** Setara pohon yang ditanam dan energi listrik yang dihemat.
+### 5. 🚚 Alur Pelacakan Logistik (*Journey & Custody Tracking*)
+* Memantau status penanganan makanan surplus secara bertahap dari *Reported*, *Assessed*, *Matched*, *In Transit*, hingga *Received & Rescued*. Menampilkan badge Food Safety Gate pada setiap catatan.
 
-### 6. 💡 Wawasan Operasional & Simulator Pencegahan (*Insights & Prevention*)
-* **Deteksi Pola Surplus Berulang:** Mengidentifikasi jenis makanan yang paling sering sisa dan kegiatan/acara yang menjadi sumber utama.
-* **Rekomendasi Pencegahan Otomatis:** Menghasilkan saran operasional konkret bagi tim manajemen dapur untuk memperbaiki perencanaan pembelian bahan baku.
-* **Simulator Pengurangan Limbah (*Prevention Simulator*):** Slider interaktif untuk mensimulasikan pemotongan kelebihan belanja (5%–30%) dan langsung melihat potensi efisiensi biaya dan kilogram limbah yang dicegah sebelum dimasak.
+### 6. 🌍 Kalkulator Dampak Nyata (*Impact & ESG Analytics*)
+* Mengonversi surplus makanan yang terselamatkan menjadi indikator nyata: kg pangan terselamatkan, porsi makan (standar GFN: 0.35 kg/porsi), emisi $CO_2e$ yang dicegah (standar EPA WARM: 2.1 kg $CO_2e$/kg), dan nilai ekonomi rupiah.
 
-### 7. 🌐 Fitur Aksesibilitas & Arsitektur
-* **Dukungan Multi-Bahasa Lengkap (Bilingual ID 🇮🇩 / EN 🇬🇧):** Switch instan satu klik dengan ikon bendera di semua halaman.
-* **Local-First (Zero-Login):** Data tersimpan langsung dan aman di `localStorage` peramban. Sangat cepat, privat, dan siap didemokan tanpa memerlukan database eksternal.
-* **Desain Responsif:** Tampilan optimal di perangkat smartphone, tablet, maupun layar laptop/desktop.
+### 7. 💡 Wawasan Operasional & Simulator Pencegahan (*Insights & Simulator*)
+* Deteksi pola surplus berulang di dapur, rekomendasi pencegahan otomatis di hulu, dan *Interactive Prevention Simulator* untuk menekan biaya belanja bahan baku.
+
+### 8. 📚 Pusat Edukasi, Metodologi & Sumber (*Learn*)
+* Halaman metodologi lengkap yang memisahkan: (1) Prinsip resmi WHO/Kemenkes/BPOM, (2) Aturan operasional prototipe REPLATE, dan (3) Asumsi serta batasan teknis.
 
 ---
 
@@ -97,17 +115,17 @@ SURPLUS LAPORAN ➔ PENILAIAN SKOR ➔ RUTE HIERARKI ➔ REKOMENDASI MITRA ➔ P
 ```mermaid
 flowchart TD
     Start([Mulai Operasional Dapur]) --> Report[1. Input Data di Lapor Surplus]
-    Report --> Assess[2. Analisis di Halaman Penilaian]
-    Assess --> Score{Cek Rescue Score & Rute}
-    Score -->|Tinggi| Direct[Rute: Distribusi Langsung]
-    Score -->|Sedang| Repurpose[Rute: Pengolahan Kembali]
-    Score -->|Kritis| Compost[Rute: Kompos / Pakan Ternak]
-    Direct --> PickPartner[Pilih Mitra Penerima Terdekat]
-    Repurpose --> PickPartner
-    Compost --> PickPartner
-    PickPartner --> Journey[3. Pantau Logistik di Alur Penyelamatan]
-    Journey --> Impact[4. Tinjau Metrik Emisi di Halaman Dampak]
-    Journey --> Insights[5. Evaluasi & Simulasi Pencegahan di Wawasan]
+    Report --> Gate{2. Food Safety Gate Evaluation}
+    Gate -->|PASS| Score[3. Hitung Rescue Score & Rute Konsumsi]
+    Gate -->|REVIEW| EditHold[Tahan Konsumsi & Lengkapi Data]
+    Gate -->|REJECT| AltRoute[Blokir Konsumsi ➔ Alihkan ke Kompos/Disposal]
+    EditHold -->|Perbarui Data| Gate
+    Score --> PickPartner[4. Pilih Mitra Penampung Terdekat]
+    AltRoute --> PickCompost[Pilih Fasilitas Kompos Industri]
+    PickPartner --> Journey[5. Pantau Logistik di Alur Penyelamatan]
+    PickCompost --> Journey
+    Journey --> Impact[6. Tinjau Dampak Emisi & Porsi Terselamatkan]
+    Journey --> Insights[7. Evaluasi Pola & Simulasi Pencegahan di Hulu]
 ```
 
 ---
@@ -117,42 +135,48 @@ flowchart TD
 ```text
 replate/
 ├── public/                 # Favicon dan aset statis SVG
+├── scripts/
+│   └── test-food-safety-gate.js # Script otomasi pengujian 13 skenario gate
 ├── src/
 │   ├── assets/             # Ilustrasi & logo
 │   ├── components/         # Komponen UI modular
 │   │   ├── Button.jsx              # Tombol kustom bervariasi
+│   │   ├── EditSafetyModal.jsx     # Modal edit parameter keamanan di Assessment
 │   │   ├── EmptyState.jsx          # Tampilan saat data kosong
 │   │   ├── ErrorBoundary.jsx       # Penangkal error runtime
+│   │   ├── FoodSafetyGateCard.jsx  # Kartu status Food Safety Gate teratas
 │   │   ├── Footer.jsx              # Footer gelombang modern
-│   │   ├── JourneyTimeline.jsx     # Garis waktu status logistik
-│   │   ├── MatchCard.jsx           # Kartu rekomendasi mitra
+│   │   ├── JourneyTimeline.jsx     # Garis waktu status logistik + safety pill
+│   │   ├── MatchCard.jsx           # Kartu rekomendasi mitra + lock state
 │   │   ├── Navbar.jsx              # Navigasi melayang + selector bahasa
 │   │   ├── PreventionSimulator.jsx # Simulator pencegahan surplus
 │   │   ├── ScoreBreakdown.jsx      # Visualisasi rincian skor
 │   │   └── StatusBadge.jsx         # Badge status multi-warna
 │   ├── data/               # Data benchmark, aturan, dan mitra
 │   │   ├── destinations.js         # Daftar mitra penampung terverifikasi
-│   │   ├── foods.js                # Kategori pangan & parameter keamanan
-│   │   ├── learning.js             # Data panduan pencegahan pangan
-│   │   ├── rules.js                # Aturan pembobotan rute
+│   │   ├── foods.js                # Kategori pangan & kosakata Food Safety Gate
+│   │   ├── learning.js             # 5 modul edukasi rantai pasok
+│   │   ├── rules.js                # Aturan pembobotan rute deterministik
 │   │   └── sources.js              # Kategori asal operasional
 │   ├── engine/             # Mesin logika deterministik
+│   │   ├── foodSafetyGate.js       # Gerbang pemeriksaan keamanan pangan awal
 │   │   ├── matchingEngine.js       # Algoritma pencocokan mitra
 │   │   ├── rescueScore.js          # Kalkulator Rescue Score (0-100)
 │   │   └── routeEngine.js          # Penentu rute hierarki pangan
 │   ├── pages/              # Halaman utama aplikasi
-│   │   ├── Assessment.jsx          # Halaman evaluasi & pilihan rute
-│   │   ├── Home.jsx                # Halaman beranda
+│   │   ├── Assessment.jsx          # Halaman evaluasi & Food Safety Gate
+│   │   ├── Home.jsx                # Halaman beranda interaktif
 │   │   ├── Impact.jsx              # Dashboard dampak ESG & emisi karbon
-│   │   ├── Insights.jsx            # Wawasan surplus & pencegahan hulu
-│   │   ├── Journey.jsx             # Pelacakan alur penyelamatan
+│   │   ├── Insights.jsx            # Wawasan surplus & simulator pencegahan
+│   │   ├── Journey.jsx             # Pelacakan alur penyelamatan real-time
+│   │   ├── Learn.jsx               # Pusat metodologi, rujukan WHO/BPOM & edukasi
 │   │   └── ReportSurplus.jsx       # Formulir pelaporan makanan berlebih
 │   ├── utils/              # Modul utilitas
-│   │   ├── calculations.js         # Perhitungan matematis dampak
+│   │   ├── calculations.js         # Perhitungan dampak & porsi pangan
 │   │   ├── formatters.js           # Format mata uang & tanggal
 │   │   ├── i18n.js                 # Kamus terjemahan Bahasa Indonesia & Inggris
 │   │   └── storage.js              # Manajemen penyimpanan lokal (localStorage)
-│   ├── App.jsx             # Komponen root aplikasi & state routing
+│   ├── App.jsx             # Root komponen & navigasi routing
 │   ├── index.css           # Konfigurasi Tailwind & gaya global
 │   └── main.jsx            # Titik masuk render React DOM
 ├── index.html              # Shell HTML & Google Fonts
@@ -161,6 +185,32 @@ replate/
 ├── vercel.json             # Konfigurasi routing SPA Vercel
 └── vite.config.js          # Konfigurasi bundler Vite
 ```
+
+---
+
+## 🧪 Pengujian Otomatis (*Automated Test Suite*)
+
+REPLATE dilengkapi dengan skrip pengujian untuk memverifikasi seluruh 13 skenario wajib Food Safety Gate:
+
+```bash
+# Jalankan test suite verifikasi 13 skenario
+node scripts/test-food-safety-gate.js
+```
+
+### Ringkasan 13 Skenario Uji:
+1. Informasi lengkap & memenuhi standar ➔ `PASS`
+2. Riwayat penyimpanan tidak diketahui ➔ `REVIEW`
+3. Waktu penyimpanan tidak lengkap / kondisi berubah ➔ `REVIEW`
+4. Ditemukan tanda kerusakan atau pembusukan jelas ➔ `REJECT`
+5. Produk kedaluwarsa ➔ `REJECT`; Jam di masa depan ➔ `REVIEW`
+6. Perubahan data di Assessment langsung memperbarui evaluasi secara dinamis
+7. Makanan berstatus `REVIEW` diblokir dari rekomendasi rute konsumsi
+8. Makanan berstatus `REJECT` diblokir mutlak dari konsumsi & mitra makanan manusia
+9. Makanan berstatus `PASS` menerima Rescue Score & rute konsumsi yang sesuai
+10. Rescue Score tinggi tidak dapat mengesampingkan status `REVIEW` atau `REJECT`
+11. Metadata hasil evaluasi tersimpan konsisten dan ter-serialize rapi
+12. Data `localStorage` lama otomatis bermigrasi konservatif ke `REVIEW`
+13. Kemasan kaleng rusak/penyok parah dipetakan ke rute `SAFE_DISPOSAL`
 
 ---
 
@@ -181,14 +231,19 @@ cd replate
 npm install
 ```
 
-### 3. Jalankan Server Pengembangan
+### 3. Jalankan Pengujian
+```bash
+node scripts/test-food-safety-gate.js
+```
+
+### 4. Jalankan Server Pengembangan
 ```bash
 npm run dev
 ```
 Buka peramban dan akses alamat:  
 👉 **`http://localhost:5173/`**
 
-### 4. Build untuk Produksi
+### 5. Build untuk Produksi
 ```bash
 npm run build
 npm run preview
@@ -198,10 +253,10 @@ npm run preview
 
 ## 🛡️ Catatan Keamanan Pangan (*Food Safety Disclaimer*)
 
-> **REPLATE menyediakan sistem pendukung keputusan algoritmik untuk redistribusi dan pencegahan surplus makanan. Platform ini tidak menggantikan inspeksi keamanan pangan langsung di lokasi atau standar sertifikasi higienitas resmi. Keputusan redistribusi makanan siap santap harus selalu mematuhi panduan dinas kesehatan dan regulasi keamanan pangan yang berlaku.**
+> **REPLATE menyediakan sistem pendukung keputusan algoritmik untuk redistribusi dan pencegahan surplus makanan. Platform ini tidak menggantikan inspeksi keamanan pangan langsung di lokasi atau standar sertifikasi higienitas resmi oleh tenaga kesehatan berwenang. Keputusan redistribusi makanan siap santap harus selalu mematuhi panduan dinas kesehatan dan regulasi keamanan pangan yang berlaku.**
 
 ---
 
 ## 📄 Lisensi
 Didistribusikan di bawah lisensi **MIT License**.
-Dikembangkan untuk masa depan rantai pasok pangan yang berkelanjutan dan bebas sampah.
+Dikembangkan untuk masa depan rantai pasok pangan yang berkelanjutan, aman, dan bebas sampah.

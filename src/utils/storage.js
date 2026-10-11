@@ -1,7 +1,10 @@
 /**
  * REPLATE Centralized LocalStorage Utility
- * Manages reports, journey logs, impact data, and demo modes with zero external database dependencies.
+ * Manages reports, journey logs, impact data, and Food Safety Gate statuses
+ * with zero external database dependencies.
  */
+
+import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate.js';
 
 const STORAGE_KEYS = {
   REPORTS: 'replate_surplus_reports_v1',
@@ -18,6 +21,7 @@ const dispatchStorageEvent = () => {
 
 /**
  * Get all surplus reports from localStorage
+ * Includes safe, conservative migration for legacy reports lacking Food Safety Gate data.
  */
 export function getReports() {
   if (typeof window === 'undefined') return [];
@@ -26,14 +30,40 @@ export function getReports() {
     if (!raw) return [];
     const list = JSON.parse(raw);
     if (!Array.isArray(list)) return [];
-    // User requested: "hapus semua data demo, jangan buat data palsu"
-    // Purge any demo or fake items that may have been stored previously
+
+    // Purge any legacy demo or fake items
     const realReports = list.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-'));
-    if (realReports.length !== list.length) {
-      localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(realReports));
+
+    // Safe conservative migration:
+    // Existing reports without foodSafetyGate data must NOT default to PASS!
+    // Assign conservative REVIEW status.
+    let hadMigration = false;
+    const migratedReports = realReports.map(rep => {
+      if (!rep.foodSafetyGate) {
+        hadMigration = true;
+        return {
+          ...rep,
+          foodSafetyGate: {
+            status: 'REVIEW',
+            eligibleForConsumptionRecommendation: false,
+            headline: 'DATA LAMPAU (MEMERLUKAN VERIFIKASI KEAMANAN)',
+            summary: 'Laporan ini berasal dari versi sebelumnya dan belum melalui pemeriksaan Food Safety Gate.',
+            reasons: ['Data lampau belum memiliki riwayat pemeriksaan Food Safety Gate.'],
+            missingInformation: ['Parameter lengkap keamanan pangan (kondisi, riwayat suhu, kemasan).'],
+            evaluatedAt: rep.createdAt || new Date().toISOString(),
+            ruleVersion: '1.0 (Legacy Migration)'
+          }
+        };
+      }
+      return rep;
+    });
+
+    if (hadMigration || realReports.length !== list.length) {
+      localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(migratedReports));
       localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
     }
-    return realReports;
+
+    return migratedReports;
   } catch (err) {
     console.error('[REPLATE Storage] Error reading reports:', err);
     return [];
@@ -54,15 +84,25 @@ export function getReportById(id) {
 export function saveReport(report) {
   try {
     const reports = getReports();
+
+    // Ensure foodSafetyGate information is present and properly evaluated
+    const gateResult = report.foodSafetyGate || evaluateFoodSafetyGate(report);
+
     const newReport = {
       ...report,
       id: report.id || `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       createdAt: report.createdAt || new Date().toISOString(),
+      foodSafetyGate: gateResult,
       journeyEvents: report.journeyEvents || [
         {
           status: 'REPORTED',
           timestamp: new Date().toISOString(),
           note: `Surplus recorded: ${report.quantity} ${report.unit} ${report.foodName || 'Food'}`
+        },
+        {
+          status: 'SAFETY_SCREENED',
+          timestamp: new Date().toISOString(),
+          note: `Food Safety Gate: ${gateResult.status} — ${gateResult.headline}`
         }
       ]
     };
@@ -99,6 +139,29 @@ export function updateReport(id, updates) {
     console.error('[REPLATE Storage] Error updating report:', err);
     throw err;
   }
+}
+
+/**
+ * Re-evaluate Food Safety Gate for an existing report with updated parameters
+ */
+export function reassessReportSafety(id, updatedPayload, lang = 'id') {
+  const report = getReportById(id);
+  if (!report) return null;
+
+  const merged = { ...report, ...updatedPayload };
+  const newGate = evaluateFoodSafetyGate(merged, lang);
+
+  const newEvent = {
+    status: 'SAFETY_REASSESSED',
+    timestamp: new Date().toISOString(),
+    note: `Food Safety Gate re-evaluated: ${newGate.status} (${newGate.headline})`
+  };
+
+  return updateReport(id, {
+    ...updatedPayload,
+    foodSafetyGate: newGate,
+    journeyEvents: [...(report.journeyEvents || []), newEvent]
+  });
 }
 
 /**
@@ -166,4 +229,3 @@ export function loadDemoData() {
   clearAllData();
   return [];
 }
-

@@ -55,6 +55,28 @@ export default function JourneyTimeline({
           <p className="text-xs font-sans font-semibold text-slate-500 mt-1">
             ID: <span className="text-slate-800 font-bold">{report.id}</span> • {formatDate(report.createdAt)}
           </p>
+
+          {/* Food Safety Gate Status Pill */}
+          {report.foodSafetyGate && (
+            <div className="pt-2 flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-black border ${
+                report.foodSafetyGate.status === 'PASS'
+                  ? 'bg-emerald-50 text-emerald-950 border-emerald-300'
+                  : report.foodSafetyGate.status === 'REVIEW'
+                  ? 'bg-amber-50 text-amber-950 border-amber-300'
+                  : 'bg-rose-50 text-rose-950 border-rose-300'
+              }`}>
+                <span>🛡️ Safety Gate: {report.foodSafetyGate.status}</span>
+                <span className="font-normal opacity-75">
+                  ({report.foodSafetyGate.status === 'PASS' 
+                    ? (lang === 'id' ? 'Lolos Awal' : 'Screened Pass') 
+                    : report.foodSafetyGate.status === 'REVIEW'
+                    ? (lang === 'id' ? 'Review Diperlukan' : 'Review Needed')
+                    : (lang === 'id' ? 'Ditolak Konsumsi' : 'Inedible')})
+                </span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Milestone Badge */}

@@ -25,6 +25,7 @@ export function calculateImpactSummary(reports = []) {
   }
 
   let totalRescuedKg = 0;
+  let totalOrganicKg = 0;
   let totalActiveKg = 0;
   let totalHandledKg = 0;
   let completedJourneys = 0;
@@ -41,7 +42,11 @@ export function calculateImpactSummary(reports = []) {
     totalHandledKg += kg;
 
     if (rep.journeyStatus === 'RECEIVED') {
-      totalRescuedKg += kg;
+      if (rep.recommendedRoute === 'ORGANIC') {
+        totalOrganicKg += kg;
+      } else {
+        totalRescuedKg += kg;
+      }
       completedJourneys += 1;
     } else if (rep.journeyStatus === 'RESCUE_INITIATED' || rep.journeyStatus === 'MATCHED') {
       totalActiveKg += kg;
@@ -71,6 +76,7 @@ export function calculateImpactSummary(reports = []) {
   return {
     totalReports: reports.length,
     totalRescuedKg: Math.round(totalRescuedKg * 10) / 10,
+    totalOrganicKg: Math.round(totalOrganicKg * 10) / 10,
     totalActiveKg: Math.round(totalActiveKg * 10) / 10,
     totalHandledKg: Math.round(totalHandledKg * 10) / 10,
     completedJourneys,

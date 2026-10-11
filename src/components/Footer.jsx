@@ -109,6 +109,14 @@ export default function Footer({ onNavigate }) {
                     {t.nav.insights}
                   </button>
                 </li>
+                <li>
+                  <button
+                    onClick={() => onNavigate('learn')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {t.nav.learn}
+                  </button>
+                </li>
               </ul>
             </div>
 

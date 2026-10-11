@@ -75,6 +75,7 @@ export default function Navbar({ activePage, onNavigate }) {
     { id: 'journeys', label: t.nav.journeys, badge: activeCount > 0 ? activeCount : null },
     { id: 'impact', label: t.nav.impact },
     { id: 'insights', label: t.nav.insights },
+    { id: 'learn', label: t.nav.learn },
   ];
 
   const handleNavClick = (pageId) => {

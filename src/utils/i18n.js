@@ -9,6 +9,7 @@ export const TRANSLATIONS = {
       journeys: 'Perjalanan',
       impact: 'Dampak',
       insights: 'Simulasi & Wawasan',
+      learn: 'Metodologi',
       sampleData: 'Data Demo',
       reportButton: '+ Lapor Surplus',
       activeBadge: 'Aktif',
@@ -90,6 +91,7 @@ export const TRANSLATIONS = {
       'fruits': { name: 'Buah Segar (Kebun & Jeruk)', category: 'Bahan Segar' },
       'packaged-dry-goods': { name: 'Sembako & Bahan Kering', category: 'Bahan Kering' },
       'dairy-beverages': { name: 'Susu & Minuman Nabati', category: 'Produk Susu' },
+      'meat-poultry-fish': { name: 'Daging, Unggas & Ikan', category: 'Daging & Ikan' },
       'other': { name: 'Makanan Surplus Lainnya', category: 'Siap Saji' }
     },
     // Conditions
@@ -214,6 +216,7 @@ export const TRANSLATIONS = {
       journeys: 'Journeys',
       impact: 'Impact',
       insights: 'Insights & Simulator',
+      learn: 'Methodology',
       sampleData: 'Sample Data',
       reportButton: '+ Report Surplus',
       activeBadge: 'Active',
@@ -295,6 +298,7 @@ export const TRANSLATIONS = {
       'fruits': { name: 'Fresh Fruits (Orchard & Citrus)', category: 'Produce' },
       'packaged-dry-goods': { name: 'Packaged & Dry Groceries', category: 'Packaged' },
       'dairy-beverages': { name: 'Dairy & Plant Beverages', category: 'Dairy' },
+      'meat-poultry-fish': { name: 'Meat, Poultry & Fish', category: 'Meat & Fish' },
       'other': { name: 'Other Edible Surplus', category: 'Prepared' }
     },
     // Conditions

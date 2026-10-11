@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, MapPin, Clock, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
+import { Check, MapPin, Clock, ShieldCheck, ArrowRight, Sparkles, Lock, AlertTriangle } from 'lucide-react';
 import Button from './Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
@@ -50,7 +50,8 @@ export default function MatchCard({
   lang = getActiveLanguage()
 }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
-  const { destination, matchScore, checklist, rationale } = match;
+  const isId = lang === 'id';
+  const { destination, matchScore, checklist, rationale, isLockedForReview, isRestrictedToCompost } = match;
 
   const destTranslation = (lang === 'id' && DESTINATION_TRANSLATIONS_ID[destination.id]) || {};
   const destName = destTranslation.name || destination.name;
@@ -61,20 +62,39 @@ export default function MatchCard({
   return (
     <div
       className={`rounded-3xl border-2 transition-all duration-200 p-6 md:p-8 relative ${
-        isBestMatch
+        isRestrictedToCompost
+          ? 'bg-amber-50/40 border-amber-300 shadow-soft'
+          : isLockedForReview
+          ? 'bg-slate-50/70 border-slate-200 opacity-90'
+          : isBestMatch
           ? 'bg-gradient-to-b from-white via-teal-50/25 to-white border-brand-400 shadow-card'
           : selected
-            ? 'bg-teal-50/50 border-brand-500 shadow-card'
-            : 'bg-white border-slate-100 shadow-soft hover:shadow-card'
+          ? 'bg-teal-50/50 border-brand-500 shadow-card'
+          : 'bg-white border-slate-100 shadow-soft hover:shadow-card'
       }`}
     >
-      {/* Best Match Pill */}
-      {isBestMatch && (
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-sun-400 text-amber-950 font-display font-extrabold text-xs shadow-sm mb-4">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{t.assessment.bestMatch}</span>
-        </div>
-      )}
+      {/* Top Badges */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {isBestMatch && !isRestrictedToCompost && (
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-sun-400 text-amber-950 font-display font-extrabold text-xs shadow-xs">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t.assessment.bestMatch}</span>
+          </div>
+        )}
+
+        {isRestrictedToCompost && (
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-600 text-white font-display font-extrabold text-xs shadow-xs">
+            <span>🌿 {isId ? 'PENGALIHAN KOMPOS KHUSUS (BUKAN MAKANAN)' : 'RESTRICTED COMPOST FACILITY'}</span>
+          </div>
+        )}
+
+        {isLockedForReview && (
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-200 text-slate-700 font-display font-extrabold text-xs">
+            <Lock className="w-3 h-3" />
+            <span>{isId ? 'Terkunci Sementara' : 'Locked Pending Review'}</span>
+          </div>
+        )}
+      </div>
 
       {/* Header Info & Match Percentage */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-100">
@@ -94,7 +114,7 @@ export default function MatchCard({
 
         {/* Match Percentage Pill */}
         <div className="sm:text-right shrink-0">
-          <div className="inline-block bg-teal-50 border-2 border-brand-300 rounded-2xl px-4 py-2 shadow-sm text-center">
+          <div className="inline-block bg-teal-50 border-2 border-brand-300 rounded-2xl px-4 py-2 shadow-xs text-center">
             <span className="block text-3xl font-display font-black text-brand-600">
               {matchScore}%
             </span>
@@ -152,16 +172,30 @@ export default function MatchCard({
         <span className="text-xs text-slate-500 font-sans italic">
           {rationale?.[0] || (lang === 'id' ? 'Parameter kecocokan terverifikasi.' : 'Optimized matching verified.')}
         </span>
-        <Button
-          variant={selected ? 'primary' : isBestMatch ? 'sun' : 'secondary'}
-          size="md"
-          onClick={() => onSelect && onSelect(destination, matchScore)}
-          className="w-full sm:w-auto font-display font-black text-xs px-6 py-3"
-          icon={selected ? Check : ArrowRight}
-          iconPosition="right"
-        >
-          {selected ? t.assessment.selectedDestination : t.assessment.selectDestination}
-        </Button>
+
+        {isLockedForReview ? (
+          <div className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-100 text-slate-500 text-xs font-display font-bold flex items-center justify-center gap-2">
+            <Lock className="w-3.5 h-3.5" />
+            <span>{isId ? 'Terkunci (Perlu Verifikasi Safety)' : 'Locked (Safety Verification Needed)'}</span>
+          </div>
+        ) : (
+          <Button
+            variant={selected ? 'primary' : isRestrictedToCompost ? 'secondary' : isBestMatch ? 'sun' : 'secondary'}
+            size="md"
+            onClick={() => onSelect && onSelect(destination, matchScore)}
+            className={`w-full sm:w-auto font-display font-black text-xs px-6 py-3 ${
+              isRestrictedToCompost ? 'border-amber-400 text-amber-950 bg-amber-100 hover:bg-amber-200' : ''
+            }`}
+            icon={selected ? Check : ArrowRight}
+            iconPosition="right"
+          >
+            {selected
+              ? t.assessment.selectedDestination
+              : isRestrictedToCompost
+              ? (isId ? 'Pilih Fasilitas Kompos 🌿' : 'Select Compost Facility 🌿')
+              : t.assessment.selectDestination}
+          </Button>
+        )}
       </div>
     </div>
   );

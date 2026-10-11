@@ -9,6 +9,11 @@
  * - Time Compatibility (15%)
  * - Proximity / Distance (10%)
  * - Need Urgency (10%)
+ * 
+ * GATE INTEGRATION:
+ * - If Food Safety Gate is REJECT: Excludes all human meal destinations (kitchens, shelters, food banks).
+ *   Only certified organic/compost facilities are matched if organic diversion is viable.
+ * - If Food Safety Gate is REVIEW: Flags destinations as locked pending inspection completion.
  */
 
 import { MATCHING_WEIGHTS } from '../data/rules.js';
@@ -20,12 +25,29 @@ export function matchDestinations({
   quantity,
   unit = 'kg',
   recommendedRoute,
-  timeWindowId
+  timeWindowId,
+  foodSafetyGate = null
 }, lang = 'id') {
+  const isId = lang === 'id';
   const foodType = FOOD_TYPES.find(f => f.id === foodTypeId) || FOOD_TYPES[0];
   const qtyInKg = unit === 'portions' ? quantity * 0.35 : Number(quantity) || 1;
 
-  const scoredList = DESTINATIONS.map(dest => {
+  // Filter candidate destinations based on Food Safety Gate status
+  let candidateDestinations = [...DESTINATIONS];
+
+  if (foodSafetyGate && foodSafetyGate.status === 'REJECT') {
+    const altRoute = foodSafetyGate.alternativeRouteRecommendation?.route;
+    if (altRoute === 'SAFE_DISPOSAL') {
+      // Hazardous or contaminated: no donation or composting partner eligible
+      return [];
+    }
+    // Only organic recovery / composting facilities allowed
+    candidateDestinations = candidateDestinations.filter(d => 
+      d.preferredRoutes.includes('ORGANIC')
+    );
+  }
+
+  const scoredList = candidateDestinations.map(dest => {
     // 1. Food Type Compatibility (0-100)
     let foodCompat = 40;
     if (dest.acceptedFoodTypes.includes(foodType.id)) {
@@ -40,6 +62,8 @@ export function matchDestinations({
       routeCompat = 100;
     } else if (recommendedRoute === 'REDISTRIBUTE' && dest.preferredRoutes.includes('PROCESS')) {
       routeCompat = 70;
+    } else if (recommendedRoute === 'ORGANIC' && dest.preferredRoutes.includes('ORGANIC')) {
+      routeCompat = 100;
     }
 
     // 3. Capacity Fit (0-100)
@@ -47,15 +71,14 @@ export function matchDestinations({
     if (dest.currentAvailableCapacityKg >= qtyInKg) {
       capacityFit = 95;
     } else if (dest.currentAvailableCapacityKg >= qtyInKg * 0.5) {
-      capacityFit = 65; // Can take partial or needs minor coordination
+      capacityFit = 65;
     } else {
-      capacityFit = 30; // Near capacity limit
+      capacityFit = 30;
     }
 
     // 4. Time Window Compatibility (0-100)
     let timeCompat = 80;
     if (timeWindowId === 'under_1h') {
-      // Shorter distance and open right now matters heavily
       timeCompat = dest.demoDistanceKm <= 3.5 ? 98 : 70;
     } else if (timeWindowId === '1_3h') {
       timeCompat = dest.demoDistanceKm <= 6.0 ? 94 : 80;
@@ -64,7 +87,6 @@ export function matchDestinations({
     }
 
     // 5. Distance Factor (0-100)
-    // Closer is higher score: 1km -> 100, 10km -> 60
     const distanceScore = Math.max(30, Math.min(100, Math.round(100 - (dest.demoDistanceKm * 3.5))));
 
     // 6. Destination Need (0-100)
@@ -81,8 +103,12 @@ export function matchDestinations({
 
     const matchScore = Math.min(100, Math.max(20, Math.round(rawTotal)));
 
+    // Gate Lock State
+    const isLockedForReview = Boolean(foodSafetyGate && foodSafetyGate.status === 'REVIEW');
+    const isRestrictedToCompost = Boolean(foodSafetyGate && foodSafetyGate.status === 'REJECT');
+
     // Compatibility Checklist
-    const checklist = lang === 'id' ? [
+    const checklist = isId ? [
       { label: 'Kesesuaian jenis pangan', passed: foodCompat >= 80, detail: dest.acceptedFoodTypes.includes(foodType.id) ? 'Kecocokan langsung' : 'Kategori sesuai' },
       { label: 'Kesesuaian rute penanganan', passed: routeCompat >= 80, detail: `Mendukung rute ${recommendedRoute}` },
       { label: 'Kapasitas penerimaan', passed: capacityFit >= 80, detail: `Kapasitas intake ${dest.currentAvailableCapacityKg} kg` },
@@ -99,14 +125,16 @@ export function matchDestinations({
     ];
 
     // Explainable rationale
-    const rationale = lang === 'id' ? [
+    const rationale = isId ? [
       dest.acceptedFoodTypes.includes(foodType.id) ? `Menerima langsung jenis ${foodType.name}` : `Menerima kategori ${foodType.category}`,
       `Kapasitas intake ${dest.currentAvailableCapacityKg} kg siap menampung ${qtyInKg.toFixed(1)} kg`,
-      `Berjarak ${dest.demoDistanceKm} km dengan jendela intake terbuka`
+      `Berjarak ${dest.demoDistanceKm} km dengan jendela intake terbuka`,
+      ...(isRestrictedToCompost ? ['Hanya untuk pengolahan organik kompos / bio-energi. Dilarang untuk makanan manusia.'] : [])
     ] : [
       dest.acceptedFoodTypes.includes(foodType.id) ? `Directly accepts ${foodType.name}` : `Accepts ${foodType.category} category`,
       `Intake capacity of ${dest.currentAvailableCapacityKg} kg easily handles ${qtyInKg.toFixed(1)} kg`,
-      `Located ${dest.demoDistanceKm} km away with open intake operating window`
+      `Located ${dest.demoDistanceKm} km away with open intake operating window`,
+      ...(isRestrictedToCompost ? ['Restricted to organic composting / bio-energy recovery only. Not for human food.'] : [])
     ];
 
     return {
@@ -114,6 +142,8 @@ export function matchDestinations({
       matchScore,
       checklist,
       rationale,
+      isLockedForReview,
+      isRestrictedToCompost,
       factors: {
         foodCompat,
         routeCompat,

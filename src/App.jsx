@@ -7,6 +7,7 @@ import Assessment from './pages/Assessment';
 import Journey from './pages/Journey';
 import Impact from './pages/Impact';
 import Insights from './pages/Insights';
+import Learn from './pages/Learn';
 import { saveReport } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
 
@@ -91,6 +92,10 @@ export default function App() {
 
         {activePage === 'insights' && (
           <Insights onNavigate={navigateTo} lang={lang} />
+        )}
+
+        {activePage === 'learn' && (
+          <Learn onNavigate={navigateTo} lang={lang} />
         )}
       </main>
 
