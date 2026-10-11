@@ -27,7 +27,7 @@
 REPLATE menerapkan arsitektur bertahap dengan gerbang pemeriksaan awal **Food Safety Gate** yang mengutamakan keselamatan publik sebelum sistem memberikan rekomendasi konsumsi manusia:
 
 ```text
-REPORT SURPLUS ➔ FOOD SAFETY GATE ➔ RESCUE SCORE ➔ ROUTE ENGINE ➔ MATCHING ENGINE ➔ FOOD JOURNEY ➔ IMPACT
+REPORT SURPLUS ➔ FOOD SAFETY GATE ➔ RESCUE SCORE ➔ ROUTE ENGINE ➔ MATCHING ENGINE ➔ FOOD JOURNEY ➔ RESCUE PERFORMANCE
 ```
 
 ---
@@ -99,8 +99,17 @@ REPORT SURPLUS ➔ FOOD SAFETY GATE ➔ RESCUE SCORE ➔ ROUTE ENGINE ➔ MATCHI
 ### 5. 🚚 Alur Pelacakan Logistik (*Journey & Custody Tracking*)
 * Memantau status penanganan makanan surplus secara bertahap dari *Reported*, *Assessed*, *Matched*, *In Transit*, hingga *Received & Rescued*. Menampilkan badge Food Safety Gate pada setiap catatan.
 
-### 6. 🌍 Kalkulator Dampak Nyata (*Impact & ESG Analytics*)
-* Mengonversi surplus makanan yang terselamatkan menjadi indikator nyata: kg pangan terselamatkan, porsi makan (standar GFN: 0.35 kg/porsi), emisi $CO_2e$ yang dicegah (standar EPA WARM: 2.1 kg $CO_2e$/kg), dan nilai ekonomi rupiah.
+### 6. 📊 Dashboard Kinerja Penyelamatan (*Rescue Performance*)
+* Menggantikan metrik dekoratif dengan dashboard kinerja operasional nyata berbasis rantai pasok:
+  * **Empat KPI Inti:**
+    1. **Total Surplus Dilaporkan (kg):** Total volume surplus valid yang dicatat dalam sistem.
+    2. **Pangan Berhasil Disalurkan (kg):** Berat dari transaksi yang telah dikonfirmasi diterima secara fisik (`RECEIVED`), memprioritaskan berat aktual penerimaan.
+    3. **Rata-rata Waktu Penyelamatan (Jam/Menit):** Durasi nyata dari laporan dibuat hingga serah terima fisik (tanpa angka acak/otomatis, menampilkan *"Belum ada data"* jika belum ada transaksi selesai).
+    4. **Tingkat Keberhasilan (%):** `(Transaksi Selesai ÷ Transaksi Jatuh Tempo) × 100%`, aman dari pembagian dengan nol.
+  * **Operational Status Pipeline:** Visualisasi 6 tahap alur penyelamatan dan identifikasi hambatan operasional nyata (antrean tertahan >2 jam, review keamanan, pembatalan).
+  * **Supply Chain Performance Funnel:** Analisis tingkat konversi bertahap dan daftar transaksi yang paling lama menunggu tindakan.
+  * **Surplus Value Exchange:** Valuasi ekonomi transparan yang memisahkan Nilai Penawaran, Nilai Transaksi Selesai (komersial), dan Penghematan Belanja Komunitas Penerima (donasi sosial).
+  * **Estimasi Dampak Lingkungan (Sekunder):** Bagian opsional/terbuka-tutup dengan faktor emisi US EPA WARM (2.1 kg CO₂e/kg) dan FAO (250 L air/kg), dihitung murni dari transaksi fisik yang telah berstatus DITERIMA.
 
 ### 7. 💡 Wawasan Operasional & Simulator Pencegahan (*Insights & Simulator*)
 * Deteksi pola surplus berulang di dapur, rekomendasi pencegahan otomatis di hulu, dan *Interactive Prevention Simulator* untuk menekan biaya belanja bahan baku.
@@ -124,7 +133,7 @@ flowchart TD
     AltRoute --> PickCompost[Pilih Fasilitas Kompos Industri]
     PickPartner --> Journey[5. Pantau Logistik di Alur Penyelamatan]
     PickCompost --> Journey
-    Journey --> Impact[6. Tinjau Dampak Emisi & Porsi Terselamatkan]
+    Journey --> Perf[6. Pantau Kinerja di Rescue Performance Dashboard]
     Journey --> Insights[7. Evaluasi Pola & Simulasi Pencegahan di Hulu]
 ```
 
@@ -136,7 +145,8 @@ flowchart TD
 replate/
 ├── public/                 # Favicon dan aset statis SVG
 ├── scripts/
-│   └── test-food-safety-gate.js # Script otomasi pengujian 13 skenario gate
+│   ├── test-food-safety-gate.js      # Script otomasi pengujian 13 skenario gate
+│   └── test-rescue-performance.js   # Script otomasi pengujian 8 skenario analitik kinerja
 ├── src/
 │   ├── assets/             # Ilustrasi & logo
 │   ├── components/         # Komponen UI modular

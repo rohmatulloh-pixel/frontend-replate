@@ -27,8 +27,8 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
     return () => window.removeEventListener('replate:storage-update', refreshReports);
   }, []);
 
-  const handleAdvance = (id, newStatus, note) => {
-    updateJourneyStatus(id, newStatus, note);
+  const handleAdvance = (id, newStatus, note, extraPayload) => {
+    updateJourneyStatus(id, newStatus, note, extraPayload);
     refreshReports();
   };
 
@@ -48,8 +48,9 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
 
   // Filter list
   const filteredReports = reports.filter(r => {
-    if (activeFilter === 'ACTIVE') return r.journeyStatus !== 'RECEIVED';
+    if (activeFilter === 'ACTIVE') return r.journeyStatus !== 'RECEIVED' && r.journeyStatus !== 'CANCELLED' && r.journeyStatus !== 'EXPIRED';
     if (activeFilter === 'COMPLETED') return r.journeyStatus === 'RECEIVED';
+    if (activeFilter === 'CANCELLED') return r.journeyStatus === 'CANCELLED' || r.journeyStatus === 'EXPIRED';
     return true;
   });
 
@@ -100,6 +101,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
                 { id: 'ALL', label: t.journey.filterAll },
                 { id: 'ACTIVE', label: t.journey.filterActive },
                 { id: 'COMPLETED', label: t.journey.filterCompleted },
+                { id: 'CANCELLED', label: lang === 'id' ? 'Batal' : 'Cancelled' },
               ].map((filter) => {
                 const isSelected = activeFilter === filter.id;
                 return (

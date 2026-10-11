@@ -89,3 +89,63 @@ export const JOURNEY_STATUS_FLOW = [
   { id: 'RESCUE_INITIATED', label: 'Rescue In Transit', order: 5, stepName: 'Logistics' },
   { id: 'RECEIVED', label: 'Received & Rescued', order: 6, stepName: 'Impact Realized' }
 ];
+
+/**
+ * Economic Valuation Benchmarks (IDR per kg)
+ * Conservative retail/market benchmark value by food category in Indonesia.
+ * Used transparently to compute Offered Surplus Value and Recipient Cost Savings.
+ */
+export const CATEGORY_BENCHMARK_PRICE_IDR = {
+  'cooked-rice': 25000,          // Rp 25.000 / kg (standard cooked staple food)
+  'bread-pastries': 35000,       // Rp 35.000 / kg (bakery items)
+  'prepared-meals': 32000,       // Rp 32.000 / kg (cooked dishes & banquet buffet)
+  'fresh-vegetables': 20000,     // Rp 20.000 / kg (fresh produce)
+  'fruits': 26000,               // Rp 26.000 / kg (fresh orchard & citrus)
+  'packaged-dry-goods': 28000,   // Rp 28.000 / kg (grains, pantry goods)
+  'dairy-beverages': 30000,      // Rp 30.000 / kg (dairy & wholesome beverages)
+  'meat-poultry-fish': 55000,    // Rp 55.000 / kg (protein items)
+  'other': 25000                 // Rp 25.000 / kg default conservative benchmark
+};
+
+/**
+ * Operational Pipeline Groupings for Rescue Performance
+ */
+export const OPERATIONAL_STATUS_GROUPS = [
+  {
+    key: 'REPORTED',
+    labelId: 'Menunggu Verifikasi & Penilaian',
+    labelEn: 'Awaiting Assessment & Verification',
+    statuses: ['REPORTED']
+  },
+  {
+    key: 'ASSESSED',
+    labelId: 'Menunggu Pemilihan Rute & Pencocokan',
+    labelEn: 'Awaiting Route & Match',
+    statuses: ['ASSESSED', 'ROUTE_SELECTED']
+  },
+  {
+    key: 'MATCHED',
+    labelId: 'Menunggu Penjemputan / Logistik',
+    labelEn: 'Matched, Awaiting Logistics',
+    statuses: ['MATCHED']
+  },
+  {
+    key: 'IN_TRANSIT',
+    labelId: 'Dalam Proses Pengantaran',
+    labelEn: 'In Transit / Rescue in Progress',
+    statuses: ['RESCUE_INITIATED']
+  },
+  {
+    key: 'RECEIVED',
+    labelId: 'Berhasil Disalurkan & Diterima',
+    labelEn: 'Successfully Rescued & Received',
+    statuses: ['RECEIVED']
+  },
+  {
+    key: 'CANCELLED_EXPIRED',
+    labelId: 'Dibatalkan / Jatuh Tempo',
+    labelEn: 'Cancelled or Lapsed',
+    statuses: ['CANCELLED', 'EXPIRED']
+  }
+];
+

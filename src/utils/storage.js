@@ -167,7 +167,7 @@ export function reassessReportSafety(id, updatedPayload, lang = 'id') {
 /**
  * Update Journey Status and append timeline event
  */
-export function updateJourneyStatus(id, newStatus, note = '') {
+export function updateJourneyStatus(id, newStatus, note = '', extraPayload = {}) {
   const report = getReportById(id);
   if (!report) return null;
 
@@ -180,6 +180,7 @@ export function updateJourneyStatus(id, newStatus, note = '') {
 
   return updateReport(id, {
     journeyStatus: newStatus,
+    ...extraPayload,
     journeyEvents: [...currentEvents, newEvent]
   });
 }

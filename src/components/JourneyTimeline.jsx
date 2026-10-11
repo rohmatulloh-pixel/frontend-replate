@@ -36,10 +36,47 @@ export default function JourneyTimeline({
 
   const handleAdvance = () => {
     if (!nextStep || !onAdvanceStatus) return;
+
+    if (nextStep.id === 'RECEIVED') {
+      const promptMsg = lang === 'id'
+        ? `Konfirmasi penerimaan makanan.\nMasukkan berat aktual yang diterima (kg) atau tekan OK untuk berat ${report.quantity} kg:`
+        : `Confirm food delivery intake.\nEnter actual weight received (kg) or press OK for ${report.quantity} kg:`;
+      const inputWeight = window.prompt(promptMsg, String(report.quantity));
+      if (inputWeight === null) return; // cancelled prompt
+      const parsedKg = parseFloat(inputWeight);
+      const actualReceivedKg = (!isNaN(parsedKg) && parsedKg > 0) ? parsedKg : Number(report.quantity) || 0;
+
+      onAdvanceStatus(report.id, 'RECEIVED', `Diterima di tujuan: ${actualReceivedKg} kg`, {
+        actualReceivedKg,
+        receivedAt: new Date().toISOString()
+      });
+      return;
+    }
+
     onAdvanceStatus(report.id, nextStep.id, undefined);
   };
 
+  const handleCancel = () => {
+    if (!onAdvanceStatus) return;
+    const defaultReasons = lang === 'id'
+      ? ['Kapasitas penerima tidak mencukupi', 'Pengambilan terlewat', 'Suhu penyimpanan di luar toleransi', 'Pembatalan oleh penyedia']
+      : ['Recipient capacity full', 'Pickup missed', 'Holding temp out of spec', 'Cancelled by donor'];
+    
+    const reasonPrompt = lang === 'id'
+      ? `Pilih / Masukkan alasan pembatalan:\n1. ${defaultReasons[0]}\n2. ${defaultReasons[1]}\n3. ${defaultReasons[2]}\n4. ${defaultReasons[3]}\n\nKetik alasan:`
+      : `Enter cancellation reason:`;
+    
+    const inputReason = window.prompt(reasonPrompt, defaultReasons[0]);
+    if (!inputReason || !inputReason.trim()) return;
+
+    onAdvanceStatus(report.id, 'CANCELLED', `Dibatalkan: ${inputReason.trim()}`, {
+      cancellationReason: inputReason.trim(),
+      cancelledAt: new Date().toISOString()
+    });
+  };
+
   const isCompleted = currentStatus === 'RECEIVED';
+  const isCancelled = currentStatus === 'CANCELLED';
 
   return (
     <div className="bg-white rounded-3xl border border-slate-100 shadow-card p-6 md:p-8 space-y-6">
@@ -162,21 +199,46 @@ export default function JourneyTimeline({
         })}
       </div>
 
-      {/* Progression Action Button */}
-      {!readOnly && nextStep && (
-        <div className="pt-4 border-t border-slate-100 flex justify-end">
-          <Button
-            variant="sun"
-            size="md"
-            onClick={handleAdvance}
-            icon={ArrowRight}
-            iconPosition="right"
-            className="w-full sm:w-auto px-6 py-3 text-xs shadow-sun font-display font-black"
+      {/* Cancellation Notice Banner */}
+      {isCancelled && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-950 text-xs font-sans flex items-start gap-2.5">
+          <span className="text-base">⚠️</span>
+          <div>
+            <strong className="font-display font-bold block">
+              {lang === 'id' ? 'Pengiriman Dibatalkan / Gagal' : 'Journey Cancelled or Lapsed'}
+            </strong>
+            <p className="mt-0.5 text-rose-900">
+              {report.cancellationReason || (lang === 'id' ? 'Transaksi ditutup sebelum konfirmasi serah terima fisik.' : 'Workflow closed prior to physical receipt.')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Progression Action Buttons */}
+      {!readOnly && !isCompleted && !isCancelled && (
+        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="text-xs font-display font-bold text-rose-600 hover:text-rose-800 hover:underline py-2"
           >
-            {nextStep.id === 'RECEIVED'
-              ? (lang === 'id' ? 'Konfirmasi Diterima & Terselamatkan 🎉' : 'Confirm Received & Rescued 🎉')
-              : (lang === 'id' ? 'Perbarui Status Pengiriman →' : 'Advance Status →')}
-          </Button>
+            {lang === 'id' ? '✕ Batalkan Pengiriman / Laporkan Hambatan' : '✕ Cancel Journey / Report Bottleneck'}
+          </button>
+
+          {nextStep && (
+            <Button
+              variant="sun"
+              size="md"
+              onClick={handleAdvance}
+              icon={ArrowRight}
+              iconPosition="right"
+              className="w-full sm:w-auto px-6 py-3 text-xs shadow-sun font-display font-black"
+            >
+              {nextStep.id === 'RECEIVED'
+                ? (lang === 'id' ? 'Konfirmasi Diterima & Terselamatkan 🎉' : 'Confirm Received & Rescued 🎉')
+                : (lang === 'id' ? 'Perbarui Status Pengiriman →' : 'Advance Status →')}
+            </Button>
+          )}
         </div>
       )}
     </div>

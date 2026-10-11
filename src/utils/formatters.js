@@ -111,21 +111,94 @@ export function getRouteTheme(route) {
   }
 }
 
-export function getJourneyStatusMeta(status) {
+export function formatRupiah(amount) {
+  if (amount === null || amount === undefined || isNaN(amount)) return 'Rp 0';
+  const num = Math.round(Number(amount));
+  return `Rp ${num.toLocaleString('id-ID')}`;
+}
+
+export function formatDuration(hours, lang = 'id') {
+  if (hours === null || hours === undefined || isNaN(hours)) {
+    return lang === 'id' ? 'Belum ada data' : 'No data available';
+  }
+  const h = Number(hours);
+  if (h <= 0) {
+    return lang === 'id' ? '< 1 menit' : '< 1 min';
+  }
+  if (h < 1) {
+    const mins = Math.max(1, Math.round(h * 60));
+    return `${mins} ${lang === 'id' ? 'menit' : 'mins'}`;
+  }
+  const roundedHours = Math.round(h * 10) / 10;
+  return `${roundedHours.toLocaleString(lang === 'id' ? 'id-ID' : 'en-US')} ${lang === 'id' ? 'jam' : 'hours'}`;
+}
+
+export function formatNumber(val, decimals = 1, lang = 'id') {
+  if (val === null || val === undefined || isNaN(val)) return '0';
+  const num = Number(val);
+  return num.toLocaleString(lang === 'id' ? 'id-ID' : 'en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+}
+
+export function getJourneyStatusMeta(status, lang = 'id') {
+  const isId = lang === 'id';
   switch (status) {
     case 'REPORTED':
-      return { label: 'Surplus Reported', step: 1, color: 'text-charcoal-700 bg-stone-100' };
+      return { 
+        label: isId ? 'Surplus Tercatat' : 'Surplus Reported', 
+        step: 1, 
+        color: 'text-slate-800 bg-slate-100 border-slate-300' 
+      };
     case 'ASSESSED':
-      return { label: 'Assessed & Scored', step: 2, color: 'text-charcoal-800 bg-stone-200' };
+      return { 
+        label: isId ? 'Selesai Dinilai' : 'Assessed & Scored', 
+        step: 2, 
+        color: 'text-sky-800 bg-sky-100 border-sky-300' 
+      };
     case 'ROUTE_SELECTED':
-      return { label: 'Route Confirmed', step: 3, color: 'text-sage-800 bg-sage-100' };
+      return { 
+        label: isId ? 'Rute Disetujui' : 'Route Confirmed', 
+        step: 3, 
+        color: 'text-teal-800 bg-teal-100 border-teal-300' 
+      };
     case 'MATCHED':
-      return { label: 'Destination Matched', step: 4, color: 'text-sage-900 bg-sage-200' };
+      return { 
+        label: isId ? 'Mitra Dicocokkan' : 'Destination Matched', 
+        step: 4, 
+        color: 'text-indigo-800 bg-indigo-100 border-indigo-300' 
+      };
     case 'RESCUE_INITIATED':
-      return { label: 'In Transit', step: 5, color: 'text-terracotta-500 bg-terracotta-50' };
+      return { 
+        label: isId ? 'Dalam Pengantaran' : 'In Transit', 
+        step: 5, 
+        color: 'text-amber-800 bg-amber-100 border-amber-300' 
+      };
     case 'RECEIVED':
-      return { label: 'Rescued & Received', step: 6, color: 'text-forest-900 bg-forest-100 font-semibold' };
+      return { 
+        label: isId ? 'Berhasil Diterima' : 'Rescued & Received', 
+        step: 6, 
+        color: 'text-emerald-900 bg-emerald-100 border-emerald-300 font-bold' 
+      };
+    case 'CANCELLED':
+      return { 
+        label: isId ? 'Dibatalkan' : 'Cancelled', 
+        step: 0, 
+        color: 'text-rose-900 bg-rose-100 border-rose-300 font-semibold' 
+      };
+    case 'EXPIRED':
+      return { 
+        label: isId ? 'Jatuh Tempo' : 'Expired Window', 
+        step: 0, 
+        color: 'text-stone-700 bg-stone-200 border-stone-300' 
+      };
     default:
-      return { label: status, step: 1, color: 'text-charcoal-600 bg-stone-100' };
+      return { 
+        label: status, 
+        step: 1, 
+        color: 'text-slate-700 bg-slate-100 border-slate-200' 
+      };
   }
 }
+
