@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { getReports, updateJourneyStatus, deleteReport } from '../utils/storage';
+import { getReports, updateJourneyStatus, deleteReport, loadDemoData } from '../utils/storage';
 import { getFoodDisplayName } from '../utils/calculations';
 import JourneyTimeline from '../components/JourneyTimeline';
 import EmptyState from '../components/EmptyState';
@@ -89,6 +89,11 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
           description={t.journey.emptyDesc}
           actionLabel={t.nav.reportButton}
           onAction={() => onNavigate('report')}
+          secondaryActionLabel={t.impact.loadDemoBtn}
+          onSecondaryAction={() => {
+            loadDemoData();
+            refreshReports();
+          }}
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

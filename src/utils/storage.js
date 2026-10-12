@@ -30,40 +30,7 @@ export function getReports() {
     if (!raw) return [];
     const list = JSON.parse(raw);
     if (!Array.isArray(list)) return [];
-
-    // Purge any legacy demo or fake items
-    const realReports = list.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-'));
-
-    // Safe conservative migration:
-    // Existing reports without foodSafetyGate data must NOT default to PASS!
-    // Assign conservative REVIEW status.
-    let hadMigration = false;
-    const migratedReports = realReports.map(rep => {
-      if (!rep.foodSafetyGate) {
-        hadMigration = true;
-        return {
-          ...rep,
-          foodSafetyGate: {
-            status: 'REVIEW',
-            eligibleForConsumptionRecommendation: false,
-            headline: 'DATA LAMPAU (MEMERLUKAN VERIFIKASI KEAMANAN)',
-            summary: 'Laporan ini berasal dari versi sebelumnya dan belum melalui pemeriksaan Food Safety Gate.',
-            reasons: ['Data lampau belum memiliki riwayat pemeriksaan Food Safety Gate.'],
-            missingInformation: ['Parameter lengkap keamanan pangan (kondisi, riwayat suhu, kemasan).'],
-            evaluatedAt: rep.createdAt || new Date().toISOString(),
-            ruleVersion: '1.0 (Legacy Migration)'
-          }
-        };
-      }
-      return rep;
-    });
-
-    if (hadMigration || realReports.length !== list.length) {
-      localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(migratedReports));
-      localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
-    }
-
-    return migratedReports;
+    return list;
   } catch (err) {
     console.error('[REPLATE Storage] Error reading reports:', err);
     return [];
@@ -217,16 +184,230 @@ export function clearAllData() {
 }
 
 /**
- * Check if demo mode is active (always false as demo data is prohibited)
+ * Generate 5 realistic, transparent supply-chain demo records
  */
-export function isDemoMode() {
-  return false;
+export function getCuratedDemoReports() {
+  const now = Date.now();
+  const h = (hours) => new Date(now - hours * 3600 * 1000).toISOString();
+
+  return [
+    {
+      id: 'demo-rep-101',
+      isDemo: true,
+      foodTypeId: 'cooked-rice',
+      foodName: 'Nasi Matang Prasmanan Katering',
+      quantity: 15,
+      actualReceivedKg: 14.5,
+      unit: 'kg',
+      sourceContextId: 'Catering',
+      recommendedRoute: 'REDISTRIBUTE',
+      rescueScore: 92,
+      priority: 'HIGH PRIORITY',
+      journeyStatus: 'RECEIVED',
+      createdAt: h(2.5),
+      receivedAt: h(0.5),
+      selectedDestination: {
+        id: 'dest-kitchen-a',
+        name: 'Dapur Komunitas Menteng',
+        demoDistanceKm: 2.4,
+        type: 'Community Kitchen'
+      },
+      foodSafetyGate: {
+        status: 'PASS',
+        eligibleForConsumptionRecommendation: true,
+        headline: 'LOLOS PEMERIKSAAN AWAL (WHO • KEMENKES • BPOM)',
+        summary: 'Kondisi fisik prima, suhu hot-holding terjaga >60°C, wadah Cambro tertutup rapat.',
+        reasons: ['Integritas suhu terjaga aman (>60°C).', 'Wadah food-grade bersih dan higienis.'],
+        missingInformation: [],
+        evaluatedAt: h(2.4),
+        ruleVersion: '2.0'
+      },
+      journeyEvents: [
+        { status: 'REPORTED', timestamp: h(2.5), note: 'Surplus intake tercatat: 15 kg Nasi Matang (Katering)' },
+        { status: 'ASSESSED', timestamp: h(2.4), note: 'Food Safety Gate: PASS • Skor: 92/100' },
+        { status: 'ROUTE_SELECTED', timestamp: h(2.3), note: 'Rute: Distribusi Langsung (Konsumsi)' },
+        { status: 'MATCHED', timestamp: h(2.0), note: 'Dipasangkan dengan Dapur Komunitas Menteng' },
+        { status: 'RESCUE_INITIATED', timestamp: h(1.2), note: 'Armada logistik dalam perjalanan' },
+        { status: 'RECEIVED', timestamp: h(0.5), note: 'Diterima fisik di tujuan: 14.5 kg terverifikasi' }
+      ]
+    },
+    {
+      id: 'demo-rep-102',
+      isDemo: true,
+      foodTypeId: 'fresh-vegetables',
+      foodName: 'Sayuran Daun & Wortel Segar',
+      quantity: 12,
+      unit: 'kg',
+      sourceContextId: 'Restaurant',
+      recommendedRoute: 'REDISTRIBUTE',
+      rescueScore: 88,
+      priority: 'HIGH PRIORITY',
+      journeyStatus: 'RESCUE_INITIATED',
+      createdAt: h(1.5),
+      selectedDestination: {
+        id: 'dest-foodbank-b',
+        name: 'Bank Makanan Jakarta Pusat',
+        demoDistanceKm: 4.8,
+        type: 'Food Bank'
+      },
+      foodSafetyGate: {
+        status: 'PASS',
+        eligibleForConsumptionRecommendation: true,
+        headline: 'LOLOS PEMERIKSAAN AWAL',
+        summary: 'Sayuran segar bersih dari shift siang restoran.',
+        reasons: ['Kondisi fisik segar prima.', 'Bahan terpisah dari kontaminasi mentah/matang.'],
+        missingInformation: [],
+        evaluatedAt: h(1.4),
+        ruleVersion: '2.0'
+      },
+      journeyEvents: [
+        { status: 'REPORTED', timestamp: h(1.5), note: 'Surplus tercatat: 12 kg Sayuran Segar' },
+        { status: 'ASSESSED', timestamp: h(1.4), note: 'Food Safety Gate: PASS' },
+        { status: 'MATCHED', timestamp: h(1.0), note: 'Dipasangkan dengan Bank Makanan Jakarta Pusat' },
+        { status: 'RESCUE_INITIATED', timestamp: h(0.3), note: 'Relawan dalam perjalanan penjemputan' }
+      ]
+    },
+    {
+      id: 'demo-rep-103',
+      isDemo: true,
+      foodTypeId: 'bread-pastries',
+      foodName: 'Roti Sourdough & Baguette Sore',
+      quantity: 8,
+      unit: 'kg',
+      sourceContextId: 'Bakery',
+      recommendedRoute: 'PROCESS',
+      rescueScore: 78,
+      priority: 'MEDIUM PRIORITY',
+      journeyStatus: 'MATCHED',
+      createdAt: h(1.0),
+      selectedDestination: {
+        id: 'dest-center-c',
+        name: 'Dapur Sosial Tebet',
+        demoDistanceKm: 3.2,
+        type: 'Shelter Meal Program'
+      },
+      foodSafetyGate: {
+        status: 'PASS',
+        eligibleForConsumptionRecommendation: true,
+        headline: 'LOLOS PEMERIKSAAN AWAL',
+        summary: 'Roti batch harian masih sangat layak konsumsi/olah.',
+        reasons: ['Kemasan bersih higienis.', 'Belum melewati masa simpan aman.'],
+        missingInformation: [],
+        evaluatedAt: h(0.9),
+        ruleVersion: '2.0'
+      },
+      journeyEvents: [
+        { status: 'REPORTED', timestamp: h(1.0), note: 'Surplus tercatat: 8 kg Roti' },
+        { status: 'ASSESSED', timestamp: h(0.9), note: 'Food Safety Gate: PASS • Rute: Repurpose' },
+        { status: 'MATCHED', timestamp: h(0.5), note: 'Menunggu konfirmasi armada penjemputan' }
+      ]
+    },
+    {
+      id: 'demo-rep-104',
+      isDemo: true,
+      foodTypeId: 'dairy-beverages',
+      foodName: 'Susu Pasteurisasi & Minuman Sehat',
+      quantity: 6,
+      unit: 'kg',
+      sourceContextId: 'Retail',
+      recommendedRoute: 'HOLD',
+      rescueScore: 0,
+      priority: 'HOLD',
+      journeyStatus: 'REPORTED',
+      createdAt: h(0.5),
+      foodSafetyGate: {
+        status: 'REVIEW',
+        eligibleForConsumptionRecommendation: false,
+        headline: 'DATA PERLU REVIEW (SUHU PENYIMPANAN BELUM TERVERIFIKASI)',
+        summary: 'Produk susu memerlukan konfirmasi suhu holding chiller sebelum rekomendasi konsumsi dapat disetujui.',
+        reasons: ['Riwayat suhu rantai dingin (<4°C) memerlukan konfirmasi petugas.'],
+        missingInformation: ['Pemeriksaan sensor suhu cold chain saat serah terima.'],
+        evaluatedAt: h(0.5),
+        ruleVersion: '2.0'
+      },
+      journeyEvents: [
+        { status: 'REPORTED', timestamp: h(0.5), note: 'Surplus tercatat: 6 kg Produk Susu' },
+        { status: 'SAFETY_SCREENED', timestamp: h(0.4), note: 'Status REVIEW: Rekomendasi konsumsi ditahan' }
+      ]
+    },
+    {
+      id: 'demo-rep-105',
+      isDemo: true,
+      foodTypeId: 'prepared-meals',
+      foodName: 'Lauk Buffet Prasmanan',
+      quantity: 5,
+      unit: 'kg',
+      sourceContextId: 'Restaurant',
+      recommendedRoute: 'REDISTRIBUTE',
+      rescueScore: 70,
+      priority: 'MEDIUM PRIORITY',
+      journeyStatus: 'CANCELLED',
+      cancellationReason: 'Kapasitas pendingin mitra penerima penuh',
+      createdAt: h(3.0),
+      cancelledAt: h(2.0),
+      foodSafetyGate: {
+        status: 'PASS',
+        eligibleForConsumptionRecommendation: true,
+        headline: 'LOLOS PEMERIKSAAN AWAL',
+        summary: 'Lolos inspeksi awal.',
+        reasons: ['Kondisi higienis awal baik.'],
+        missingInformation: [],
+        evaluatedAt: h(2.9),
+        ruleVersion: '2.0'
+      },
+      journeyEvents: [
+        { status: 'REPORTED', timestamp: h(3.0), note: 'Surplus tercatat: 5 kg Lauk' },
+        { status: 'MATCHED', timestamp: h(2.5), note: 'Mitra dicocokkan' },
+        { status: 'CANCELLED', timestamp: h(2.0), note: 'Dibatalkan: Kapasitas pendingin mitra penerima penuh' }
+      ]
+    }
+  ];
 }
 
 /**
- * Deprecated / safe cleaner for legacy demo data requests
+ * Check if demo mode is active
+ */
+export function isDemoMode() {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(STORAGE_KEYS.DEMO_FLAG) === 'true';
+}
+
+/**
+ * Load curated simulation demo data into localStorage
  */
 export function loadDemoData() {
-  clearAllData();
-  return [];
+  try {
+    const demoReports = getCuratedDemoReports();
+    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(demoReports));
+    localStorage.setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
+    dispatchStorageEvent();
+    return demoReports;
+  } catch (err) {
+    console.error('[REPLATE Storage] Error loading demo data:', err);
+    return [];
+  }
 }
+
+/**
+ * Clear only demo data without destroying real user reports
+ */
+export function clearDemoData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
+    if (!raw) {
+      localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
+      dispatchStorageEvent();
+      return true;
+    }
+    const list = JSON.parse(raw);
+    const realReports = Array.isArray(list) ? list.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-')) : [];
+    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(realReports));
+    localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
+    dispatchStorageEvent();
+    return true;
+  } catch (err) {
+    console.error('[REPLATE Storage] Error clearing demo data:', err);
+    return false;
+  }
+}
+

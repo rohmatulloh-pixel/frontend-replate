@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb } from 'lucide-react';
-import { getReports } from '../utils/storage';
+import { getReports, loadDemoData } from '../utils/storage';
 import { generateInsights } from '../utils/calculations';
 import PreventionSimulator from '../components/PreventionSimulator';
 import EmptyState from '../components/EmptyState';
@@ -50,6 +50,11 @@ export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
           description={lang === 'id' ? 'Laporkan makanan surplus terlebih dahulu agar pola operasional dan analisis pencegahan otomatis dapat dihitung.' : 'Report surplus food first so operational patterns and automated prevention recommendations can be calculated.'}
           actionLabel={t.nav.reportButton}
           onAction={() => onNavigate('report')}
+          secondaryActionLabel={t.impact.loadDemoBtn}
+          onSecondaryAction={() => {
+            loadDemoData();
+            setReports(getReports());
+          }}
         />
       ) : (
         <>

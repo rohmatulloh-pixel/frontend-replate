@@ -18,7 +18,7 @@ import {
   Trash2,
   Sparkles
 } from 'lucide-react';
-import { getReports, clearAllData } from '../utils/storage';
+import { getReports, clearAllData, loadDemoData, clearDemoData } from '../utils/storage';
 import { 
   calculateRescuePerformance, 
   getFoodDisplayName, 
@@ -60,9 +60,14 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
       ? 'Hapus data simulasi/demo dari perangkat Anda?'
       : 'Clear simulated demo data from your device?';
     if (window.confirm(confirmMsg)) {
-      clearAllData();
-      setReports([]);
+      clearDemoData();
+      setReports(getReports());
     }
+  };
+
+  const handleLoadDemo = () => {
+    loadDemoData();
+    setReports(getReports());
   };
 
   // Filtered reports for Master Audit Table
@@ -77,10 +82,10 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
       
       {/* 1. Header & Operational Status Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-stone-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-sky-200/60">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap mb-2">
-            <span className="text-xs font-display font-black uppercase tracking-widest text-[#0a5c56] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/80">
+            <span className="text-xs font-display font-black uppercase tracking-widest text-brand-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200/80">
               Supply-Chain Analytics
             </span>
 
@@ -98,10 +103,10 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
             )}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-slate-900 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-brand-900 tracking-tight">
             {t.impact.title}
           </h1>
-          <p className="text-sm font-sans text-slate-600 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm font-sans font-semibold text-slate-600 mt-1 max-w-2xl leading-relaxed">
             {t.impact.subtitle}
           </p>
         </div>
@@ -111,13 +116,13 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
           <button
             type="button"
             onClick={() => setShowFormulaModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-display font-bold text-slate-700 bg-white border border-stone-200 hover:bg-stone-50 hover:border-stone-300 shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-display font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-xs transition-colors"
           >
             <HelpCircle className="w-4 h-4 text-slate-500" />
             <span>{t.impact.formulaExplainer}</span>
           </button>
 
-          {perf.hasDemoData && (
+          {perf.hasDemoData ? (
             <button
               type="button"
               onClick={handleClearDemo}
@@ -125,6 +130,15 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
             >
               <Trash2 className="w-4 h-4 text-rose-600" />
               <span>{t.impact.clearDemoBtn}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleLoadDemo}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-display font-bold text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors"
+            >
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>{t.impact.loadDemoBtn}</span>
             </button>
           )}
 
@@ -146,6 +160,8 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
           description={t.impact.emptyDesc}
           actionLabel={t.impact.createFirstReport}
           onAction={() => onNavigate('report')}
+          secondaryActionLabel={t.impact.loadDemoBtn}
+          onSecondaryAction={handleLoadDemo}
         />
       ) : (
         <>
