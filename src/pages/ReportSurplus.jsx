@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, 
   AlertCircle, 
-  ShieldCheck, 
   Clock, 
   Thermometer, 
   Box, 
@@ -277,24 +276,8 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
           )}
         </div>
 
-        {/* ======================================================== */}
-        {/* FOOD SAFETY GATE SECTION: PARAMETERS 2, 3, 5, 6 */}
-        {/* ======================================================== */}
-        <div className="p-6 sm:p-7 rounded-3xl bg-teal-50/60 border-2 border-teal-200/80 space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-teal-200/60">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-teal-700" />
-              <span className="text-sm font-display font-black text-brand-950 uppercase tracking-tight">
-                {isId ? 'Parameter Food Safety Gate' : 'Food Safety Gate Parameters'}
-              </span>
-            </div>
-            <span className="text-[11px] font-sans font-bold text-teal-700 bg-white px-2.5 py-1 rounded-full border border-teal-200 shadow-2xs">
-              WHO • Kemenkes • BPOM
-            </span>
-          </div>
-
-          {/* Parameter 2: Food Condition (Sensoris / Fisik) */}
-          <div className="space-y-2.5">
+        {/* Field 03: Food Condition (Sensoris / Fisik) */}
+        <div className="space-y-3">
             <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
               {isId ? '03. Kondisi Fisik & Sensoris Makanan' : '03. Food Physical & Sensory Condition'} <span className="text-coral-500">*</span>
             </label>
@@ -343,103 +326,103 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
             )}
           </div>
 
-          {/* Parameter 3: Storage History & Thermal Holding */}
-          <div className="space-y-2.5">
-            <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
-              {isId ? '04. Riwayat Penyimpanan & Suhu Holding' : '04. Storage History & Thermal Holding'} <span className="text-coral-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {SAFETY_STORAGE_HISTORY_OPTIONS.map((opt) => {
-                const isSelected = formData.storageHistoryId === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, storageHistoryId: opt.id })}
-                    className={`p-3.5 rounded-2xl text-left border-2 transition-all ${
-                      isSelected
-                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-display font-black ${
-                        isSelected ? 'text-brand-950' : 'text-slate-800'
-                      }`}>
-                        {isId ? opt.labelId : opt.labelEn}
-                      </span>
-                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
-                      {isId ? opt.descriptionId : opt.descriptionEn}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Thermal Temperature Selection */}
-            <div className="pt-2">
-              <span className="block text-[11px] font-display font-bold text-slate-600 mb-1.5">
-                {isId ? 'Suhu penyimpanan aktual saat ini:' : 'Actual current holding temperature:'}
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                {SAFETY_TEMP_OPTIONS.map((temp) => (
-                  <button
-                    key={temp.id}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, storageTempId: temp.id })}
-                    className={`p-2.5 rounded-xl border text-left transition-all ${
-                      formData.storageTempId === temp.id
-                        ? 'bg-white border-brand-500 font-display font-black text-brand-950 shadow-2xs ring-1 ring-brand-400'
-                        : 'bg-white/80 border-slate-200 text-slate-600 font-sans'
-                    }`}
-                  >
-                    <Thermometer className="w-3.5 h-3.5 mb-1 text-teal-600" />
-                    <span className="block text-[11px] leading-tight">
-                      {isId ? temp.labelId : temp.labelEn}
+        {/* Field 04: Storage History & Thermal Holding */}
+        <div className="space-y-3">
+          <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
+            {isId ? '04. Riwayat Penyimpanan & Suhu Holding' : '04. Storage History & Thermal Holding'} <span className="text-coral-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {SAFETY_STORAGE_HISTORY_OPTIONS.map((opt) => {
+              const isSelected = formData.storageHistoryId === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, storageHistoryId: opt.id })}
+                  className={`p-3.5 rounded-2xl text-left border-2 transition-all ${
+                    isSelected
+                      ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs font-display font-black ${
+                      isSelected ? 'text-brand-950' : 'text-slate-800'
+                    }`}>
+                      {isId ? opt.labelId : opt.labelEn}
                     </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+                    {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
+                    {isId ? opt.descriptionId : opt.descriptionEn}
+                  </p>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Parameter 5: Packaging Integrity */}
-          <div className="space-y-2.5">
-            <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
-              {isId ? '05. Kondisi & Integritas Kemasan (Cek KLIK)' : '05. Packaging Integrity'} <span className="text-coral-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {SAFETY_PACKAGING_OPTIONS.map((opt) => {
-                const isSelected = formData.packagingConditionId === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, packagingConditionId: opt.id })}
-                    className={`p-3 rounded-2xl text-left border-2 transition-all ${
-                      isSelected
-                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 text-brand-950 shadow-sm'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-xs font-display font-bold ${
-                        isSelected ? 'text-brand-950' : 'text-slate-700'
-                      }`}>
-                        {isId ? opt.labelId : opt.labelEn}
-                      </span>
-                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
-                    </div>
-                  </button>
-                );
-              })}
+          {/* Thermal Temperature Selection */}
+          <div className="pt-2">
+            <span className="block text-[11px] font-display font-bold text-slate-600 mb-1.5">
+              {isId ? 'Suhu penyimpanan aktual saat ini:' : 'Actual current holding temperature:'}
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {SAFETY_TEMP_OPTIONS.map((temp) => (
+                <button
+                  key={temp.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, storageTempId: temp.id })}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    formData.storageTempId === temp.id
+                      ? 'bg-white border-brand-500 font-display font-black text-brand-950 shadow-2xs ring-1 ring-brand-400'
+                      : 'bg-white/80 border-slate-200 text-slate-600 font-sans'
+                  }`}
+                >
+                  <Thermometer className="w-3.5 h-3.5 mb-1 text-teal-600" />
+                  <span className="block text-[11px] leading-tight">
+                    {isId ? temp.labelId : temp.labelEn}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
+        </div>
 
-          {/* Parameter 6: Handling Integrity */}
-          <div className="space-y-2.5">
+        {/* Field 05: Packaging Integrity */}
+        <div className="space-y-3">
+          <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
+            {isId ? '05. Kondisi & Integritas Kemasan (Cek KLIK)' : '05. Packaging Integrity'} <span className="text-coral-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {SAFETY_PACKAGING_OPTIONS.map((opt) => {
+              const isSelected = formData.packagingConditionId === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, packagingConditionId: opt.id })}
+                  className={`p-3 rounded-2xl text-left border-2 transition-all ${
+                    isSelected
+                      ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 text-brand-950 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className={`text-xs font-display font-bold ${
+                      isSelected ? 'text-brand-950' : 'text-slate-700'
+                    }`}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </span>
+                    {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Field 06: Handling Integrity */}
+        <div className="space-y-3">
             <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
               {isId ? '06. Higiene Penanganan & Pemisahan Bahan Mentah' : '06. Handling Hygiene & Raw Separation'} <span className="text-coral-500">*</span>
             </label>
@@ -470,7 +453,6 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
               })}
             </div>
           </div>
-        </div>
 
         {/* Field 04: Available Time Window */}
         <div className="space-y-3">
