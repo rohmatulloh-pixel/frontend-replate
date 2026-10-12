@@ -278,53 +278,57 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
 
         {/* Field 03: Food Condition (Sensoris / Fisik) */}
         <div className="space-y-3">
-            <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
-              {isId ? '03. Kondisi Fisik & Sensoris Makanan' : '03. Food Physical & Sensory Condition'} <span className="text-coral-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {SAFETY_CONDITION_OPTIONS.map((opt) => {
-                const isSelected = formData.safetyConditionId === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      const legacyCond = opt.id === 'no_visible_damage' ? 'suitable' :
-                                         opt.id === 'altered_needs_check' ? 'near_window' :
-                                         opt.id === 'clear_spoilage' ? 'not_suitable' : 'near_window';
-                      setFormData({
-                        ...formData,
-                        safetyConditionId: opt.id,
-                        conditionId: legacyCond
-                      });
-                    }}
-                    className={`p-3.5 rounded-2xl text-left border-2 transition-all ${
-                      isSelected
-                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-display font-black ${
-                        isSelected ? 'text-brand-950' : 'text-slate-800'
-                      }`}>
-                        {isId ? opt.labelId : opt.labelEn}
-                      </span>
-                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
+          <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
+            {isId ? '03. Kondisi Fisik & Sensoris Makanan' : '03. Food Physical & Sensory Condition'} <span className="text-coral-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {SAFETY_CONDITION_OPTIONS.map((opt) => {
+              const isSelected = formData.safetyConditionId === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    const legacyCond = opt.id === 'no_visible_damage' ? 'suitable' :
+                                       opt.id === 'altered_needs_check' ? 'near_window' :
+                                       opt.id === 'clear_spoilage' ? 'not_suitable' : 'near_window';
+                    setFormData({
+                      ...formData,
+                      safetyConditionId: opt.id,
+                      conditionId: legacyCond
+                    });
+                  }}
+                  className={`p-3.5 rounded-2xl text-left border-2 transition-all flex items-start justify-between ${
+                    isSelected
+                      ? 'bg-teal-50 border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <div className="flex-1 pr-2">
+                    <span className={`block text-xs font-display ${
+                      isSelected ? 'font-black text-brand-950' : 'font-extrabold text-slate-800'
+                    }`}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </span>
+                    <p className="text-[11px] text-slate-500 font-sans leading-relaxed mt-1">
                       {isId ? opt.descriptionId : opt.descriptionEn}
                     </p>
-                  </button>
-                );
-              })}
-            </div>
-            {errors.safetyConditionId && (
-              <p className="text-xs text-coral-600 font-display font-bold flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {errors.safetyConditionId}
-              </p>
-            )}
+                  </div>
+                  {isSelected && (
+                    <span className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm mt-0.5">
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
+          {errors.safetyConditionId && (
+            <p className="text-xs text-coral-600 font-display font-bold flex items-center gap-1 mt-1">
+              <AlertCircle className="w-3.5 h-3.5" /> {errors.safetyConditionId}
+            </p>
+          )}
+        </div>
 
         {/* Field 04: Storage History & Thermal Holding */}
         <div className="space-y-3">
@@ -339,23 +343,27 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                   key={opt.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, storageHistoryId: opt.id })}
-                  className={`p-3.5 rounded-2xl text-left border-2 transition-all ${
+                  className={`p-3.5 rounded-2xl text-left border-2 transition-all flex items-start justify-between ${
                     isSelected
-                      ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                      ? 'bg-teal-50 border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
                       : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-display font-black ${
-                      isSelected ? 'text-brand-950' : 'text-slate-800'
+                  <div className="flex-1 pr-2">
+                    <span className={`block text-xs font-display ${
+                      isSelected ? 'font-black text-brand-950' : 'font-extrabold text-slate-800'
                     }`}>
                       {isId ? opt.labelId : opt.labelEn}
                     </span>
-                    {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
+                    <p className="text-[11px] text-slate-500 font-sans leading-relaxed mt-1">
+                      {isId ? opt.descriptionId : opt.descriptionEn}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
-                    {isId ? opt.descriptionId : opt.descriptionEn}
-                  </p>
+                  {isSelected && (
+                    <span className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm mt-0.5">
+                      ✓
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -374,12 +382,14 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                   onClick={() => setFormData({ ...formData, storageTempId: temp.id })}
                   className={`p-2.5 rounded-xl border text-left transition-all ${
                     formData.storageTempId === temp.id
-                      ? 'bg-white border-brand-500 font-display font-black text-brand-950 shadow-2xs ring-1 ring-brand-400'
-                      : 'bg-white/80 border-slate-200 text-slate-600 font-sans'
+                      ? 'bg-teal-50 border-brand-500 text-brand-950 ring-2 ring-brand-400/30 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                   }`}
                 >
                   <Thermometer className="w-3.5 h-3.5 mb-1 text-teal-600" />
-                  <span className="block text-[11px] leading-tight">
+                  <span className={`block text-[11px] font-display leading-tight ${
+                    formData.storageTempId === temp.id ? 'font-black text-brand-950' : 'font-extrabold text-slate-700'
+                  }`}>
                     {isId ? temp.labelId : temp.labelEn}
                   </span>
                 </button>
@@ -401,20 +411,22 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                   key={opt.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, packagingConditionId: opt.id })}
-                  className={`p-3 rounded-2xl text-left border-2 transition-all ${
+                  className={`p-3.5 rounded-2xl text-left border-2 transition-all flex items-center justify-between ${
                     isSelected
-                      ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 text-brand-950 shadow-sm'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                      ? 'bg-teal-50 border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className={`text-xs font-display font-bold ${
-                      isSelected ? 'text-brand-950' : 'text-slate-700'
-                    }`}>
-                      {isId ? opt.labelId : opt.labelEn}
+                  <span className={`text-xs font-display ${
+                    isSelected ? 'font-black text-brand-950' : 'font-extrabold text-slate-800'
+                  }`}>
+                    {isId ? opt.labelId : opt.labelEn}
+                  </span>
+                  {isSelected && (
+                    <span className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                      ✓
                     </span>
-                    {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
-                  </div>
+                  )}
                 </button>
               );
             })}
@@ -423,36 +435,38 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
 
         {/* Field 06: Handling Integrity */}
         <div className="space-y-3">
-            <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
-              {isId ? '06. Higiene Penanganan & Pemisahan Bahan Mentah' : '06. Handling Hygiene & Raw Separation'} <span className="text-coral-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {SAFETY_HANDLING_OPTIONS.map((opt) => {
-                const isSelected = formData.handlingIntegrityId === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, handlingIntegrityId: opt.id })}
-                    className={`p-3 rounded-2xl text-left border-2 transition-all ${
-                      isSelected
-                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 text-brand-950 shadow-sm'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-xs font-display font-bold ${
-                        isSelected ? 'text-brand-950' : 'text-slate-700'
-                      }`}>
-                        {isId ? opt.labelId : opt.labelEn}
-                      </span>
-                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+          <label className="block text-xs font-display font-extrabold uppercase tracking-wider text-slate-800">
+            {isId ? '06. Higiene Penanganan & Pemisahan Bahan Mentah' : '06. Handling Hygiene & Raw Separation'} <span className="text-coral-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {SAFETY_HANDLING_OPTIONS.map((opt) => {
+              const isSelected = formData.handlingIntegrityId === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, handlingIntegrityId: opt.id })}
+                  className={`p-3.5 rounded-2xl text-left border-2 transition-all flex items-center justify-between ${
+                    isSelected
+                      ? 'bg-teal-50 border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <span className={`text-xs font-display ${
+                    isSelected ? 'font-black text-brand-950' : 'font-extrabold text-slate-800'
+                  }`}>
+                    {isId ? opt.labelId : opt.labelEn}
+                  </span>
+                  {isSelected && (
+                    <span className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
         {/* Field 04: Available Time Window */}
         <div className="space-y-3">
