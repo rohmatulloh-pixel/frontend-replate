@@ -15,8 +15,7 @@ import {
   TrendingUp,
   RefreshCw,
   ExternalLink,
-  Trash2,
-  Sparkles
+  Trash2
 } from 'lucide-react';
 import { getReports, clearAllData, loadDemoData, clearDemoData } from '../utils/storage';
 import { 
@@ -96,24 +95,14 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
       {/* 1. Header & Operational Status Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-sky-200/60">
         <div>
-          <div className="flex items-center gap-2.5 flex-wrap mb-2">
-            <span className="text-xs font-display font-black uppercase tracking-widest text-brand-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200/80">
-              Supply-Chain Analytics
-            </span>
-
-            {/* Data Mode Indicator */}
-            {perf.hasDemoData ? (
+          {perf.hasDemoData && (
+            <div className="flex items-center gap-2.5 flex-wrap mb-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-extrabold bg-amber-50 text-amber-900 border border-amber-300">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
                 {t.impact.badgeDemo}
               </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-extrabold bg-emerald-50 text-emerald-900 border border-emerald-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                {t.impact.badgeOperational}
-              </span>
-            )}
-          </div>
+            </div>
+          )}
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-brand-900 tracking-tight">
             {t.impact.title}
@@ -134,7 +123,7 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
             <span>{t.impact.formulaExplainer}</span>
           </button>
 
-          {perf.hasDemoData ? (
+          {perf.hasDemoData && (
             <button
               type="button"
               onClick={handleClearDemo}
@@ -142,15 +131,6 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
             >
               <Trash2 className="w-4 h-4 text-rose-600" />
               <span>{t.impact.clearDemoBtn}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleLoadDemo}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-display font-bold text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors"
-            >
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>{t.impact.loadDemoBtn}</span>
             </button>
           )}
 
@@ -172,8 +152,6 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
           description={t.impact.emptyDesc}
           actionLabel={t.impact.createFirstReport}
           onAction={() => onNavigate('report')}
-          secondaryActionLabel={t.impact.loadDemoBtn}
-          onSecondaryAction={handleLoadDemo}
         />
       ) : (
         <>

@@ -160,11 +160,6 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-6">
       {/* Clean Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-teal-100 text-teal-900 font-display font-extrabold text-xs shadow-xs">
-          <ShieldCheck className="w-3.5 h-3.5 text-teal-700" />
-          <span>{isId ? 'Terintegrasi Food Safety Gate (WHO • Kemenkes • BPOM)' : 'Integrated Food Safety Gate'}</span>
-        </div>
-
         <h1 className="text-3xl sm:text-5xl font-display font-black text-brand-900 tracking-tight">
           {t.report.title}
         </h1>
@@ -322,23 +317,17 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                     }}
                     className={`p-3.5 rounded-2xl text-left border-2 transition-all ${
                       isSelected
-                        ? opt.gateImpact === 'reject_trigger'
-                          ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-400/30'
-                          : opt.gateImpact === 'review_trigger'
-                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/30'
-                          : 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
                         : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-xs font-display font-black ${
-                        isSelected 
-                          ? opt.gateImpact === 'reject_trigger' ? 'text-rose-950' : opt.gateImpact === 'review_trigger' ? 'text-amber-950' : 'text-brand-950'
-                          : 'text-slate-800'
+                        isSelected ? 'text-brand-950' : 'text-slate-800'
                       }`}>
                         {isId ? opt.labelId : opt.labelEn}
                       </span>
-                      {isSelected && <span className="text-xs font-bold">✓</span>}
+                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
                     </div>
                     <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
                       {isId ? opt.descriptionId : opt.descriptionEn}
@@ -369,23 +358,17 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                     onClick={() => setFormData({ ...formData, storageHistoryId: opt.id })}
                     className={`p-3.5 rounded-2xl text-left border-2 transition-all ${
                       isSelected
-                        ? opt.gateImpact === 'reject_trigger'
-                          ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-400/30'
-                          : opt.gateImpact === 'review_trigger'
-                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/30'
-                          : 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
+                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 shadow-sm'
                         : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-xs font-display font-black ${
-                        isSelected 
-                          ? opt.gateImpact === 'reject_trigger' ? 'text-rose-950' : opt.gateImpact === 'review_trigger' ? 'text-amber-950' : 'text-brand-950'
-                          : 'text-slate-800'
+                        isSelected ? 'text-brand-950' : 'text-slate-800'
                       }`}>
                         {isId ? opt.labelId : opt.labelEn}
                       </span>
-                      {isSelected && <span className="text-xs font-bold">✓</span>}
+                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
                     </div>
                     <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
                       {isId ? opt.descriptionId : opt.descriptionEn}
@@ -437,17 +420,17 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                     onClick={() => setFormData({ ...formData, packagingConditionId: opt.id })}
                     className={`p-3 rounded-2xl text-left border-2 transition-all ${
                       isSelected
-                        ? opt.gateImpact === 'reject_trigger'
-                          ? 'bg-rose-50 border-rose-500 text-rose-950'
-                          : 'bg-white border-brand-500 text-brand-950 shadow-sm'
+                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 text-brand-950 shadow-sm'
                         : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-display font-bold">
+                      <span className={`text-xs font-display font-bold ${
+                        isSelected ? 'text-brand-950' : 'text-slate-700'
+                      }`}>
                         {isId ? opt.labelId : opt.labelEn}
                       </span>
-                      {isSelected && <span className="text-xs font-bold">✓</span>}
+                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
                     </div>
                   </button>
                 );
@@ -470,15 +453,17 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
                     onClick={() => setFormData({ ...formData, handlingIntegrityId: opt.id })}
                     className={`p-3 rounded-2xl text-left border-2 transition-all ${
                       isSelected
-                        ? 'bg-white border-brand-500 text-brand-950 shadow-sm'
+                        ? 'bg-white border-brand-500 ring-2 ring-brand-400/30 text-brand-950 shadow-sm'
                         : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-display font-bold">
+                      <span className={`text-xs font-display font-bold ${
+                        isSelected ? 'text-brand-950' : 'text-slate-700'
+                      }`}>
                         {isId ? opt.labelId : opt.labelEn}
                       </span>
-                      {isSelected && <span className="text-xs font-bold">✓</span>}
+                      {isSelected && <span className="text-xs font-bold text-brand-600">✓</span>}
                     </div>
                   </button>
                 );
