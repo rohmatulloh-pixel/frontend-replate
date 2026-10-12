@@ -8,7 +8,20 @@ import Button from '../components/Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
+  const isId = currentLang === 'id';
   const [reports, setReports] = useState(() => getReports());
 
   useEffect(() => {
@@ -17,7 +30,7 @@ export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
     return () => window.removeEventListener('replate:storage-update', handleUpdate);
   }, []);
 
-  const insights = generateInsights(reports, lang);
+  const insights = generateInsights(reports, currentLang);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">

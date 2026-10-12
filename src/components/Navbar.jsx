@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { getReports, isDemoMode, loadDemoData, clearDemoData } from '../utils/storage';
 import { TRANSLATIONS, getActiveLanguage, setActiveLanguage } from '../utils/i18n';
 
@@ -119,7 +119,7 @@ export default function Navbar({ activePage, onNavigate }) {
         </div>
 
         {/* Center Pill Nav Links */}
-        <nav className="hidden lg:flex items-center space-x-1">
+        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5">
           {navLinks.map((link) => {
             const isActive = activePage === link.id;
             return (
@@ -127,7 +127,7 @@ export default function Navbar({ activePage, onNavigate }) {
                 key={link.id}
                 type="button"
                 onClick={() => handleNavClick(link.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-display font-extrabold transition-all relative ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-display font-extrabold whitespace-nowrap transition-all relative ${
                   isActive
                     ? 'bg-teal-50 text-brand-800 border-2 border-brand-400 shadow-xs'
                     : 'text-slate-600 hover:text-brand-700 hover:bg-slate-100/70 border-2 border-transparent'
@@ -188,17 +188,6 @@ export default function Navbar({ activePage, onNavigate }) {
               <FlagGB className="w-4 h-3" />
               <span>EN</span>
             </span>
-          </button>
-
-          {/* Action CTA Button */}
-          <button
-            type="button"
-            onClick={() => handleNavClick('report')}
-            className="px-4 py-2 rounded-full text-xs font-display font-black bg-sun-500 hover:bg-sun-600 text-amber-950 border border-sun-300 transition-all shadow-sun flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer"
-            title={t.nav.reportButton}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-900" />
-            <span>{t.nav.reportButton}</span>
           </button>
         </div>
 
@@ -288,17 +277,6 @@ export default function Navbar({ activePage, onNavigate }) {
                 <span>{t.impact.loadDemoBtn}</span>
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => {
-                handleNavClick('report');
-              }}
-              className="w-full py-2.5 rounded-full text-xs font-display font-black bg-sun-500 hover:bg-sun-600 text-amber-950 border-2 border-sun-300 shadow-sun flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-900" />
-              <span>{t.nav.reportButton}</span>
-            </button>
           </div>
         </div>
       )}

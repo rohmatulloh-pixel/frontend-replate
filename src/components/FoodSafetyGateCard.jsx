@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   AlertTriangle, 
@@ -15,15 +15,28 @@ import {
   Info
 } from 'lucide-react';
 import Button from './Button';
+import { getActiveLanguage } from '../utils/i18n';
 
 export default function FoodSafetyGateCard({
   gateResult,
   onEditParameters,
   onOpenMethodology,
-  lang = 'id'
+  lang = getActiveLanguage()
 }) {
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
   const [showParameters, setShowParameters] = useState(false);
-  const isId = lang === 'id';
+  const isId = currentLang === 'id';
 
   if (!gateResult) return null;
 

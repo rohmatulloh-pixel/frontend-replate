@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   ExternalLink, 
@@ -13,13 +13,28 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
-import { LEARN_MODULES } from '../data/learning';
+import { getLearnModules } from '../data/learning';
 import { OFFICIAL_SAFETY_SOURCES } from '../engine/foodSafetyGate';
 import Button from '../components/Button';
 import { getActiveLanguage } from '../utils/i18n';
 
 export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
-  const isId = lang === 'id';
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => {
+      setCurrentLang(e.detail || getActiveLanguage());
+    };
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
+  const isId = currentLang === 'id';
+  const modules = getLearnModules(currentLang);
   const [activeTab, setActiveTab] = useState('safety-gate'); // 'safety-gate' | 'learning-modules'
 
   return (
@@ -159,15 +174,15 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
                 <ul className="space-y-2 text-xs font-sans text-slate-700">
                   <li className="flex items-start gap-1.5">
                     <span className="text-teal-600 font-bold">•</span>
-                    <span><strong>WHO:</strong> Bahaya Danger Zone (5°C–60°C); pencegahan kontaminasi silang antara makanan mentah dan matang.</span>
+                    <span><strong>WHO:</strong> {isId ? 'Bahaya Danger Zone (5°C–60°C); pencegahan kontaminasi silang antara makanan mentah dan matang.' : 'Danger Zone hazards (5°C–60°C); strict prevention of cross-contamination between raw and cooked food.'}</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="text-teal-600 font-bold">•</span>
-                    <span><strong>Kemenkes RI:</strong> Higiene jasaboga; batas waktu saji di suhu ruang maksimal 4 jam; wadah tertutup kedap debu.</span>
+                    <span><strong>{isId ? 'Kemenkes RI:' : 'Ministry of Health:'}</strong> {isId ? 'Higiene jasaboga; batas waktu saji di suhu ruang maksimal 4 jam; wadah tertutup kedap debu.' : 'Food service hygiene; maximum 4-hour ambient serving limit; sealed dust-proof transport containers.'}</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="text-teal-600 font-bold">•</span>
-                    <span><strong>BPOM RI:</strong> Prinsip Cek KLIK; larangan konsumsi makanan berlendir/tengik/berjamur; kaleng kembung/penyok parah.</span>
+                    <span><strong>{isId ? 'BPOM RI:' : 'BPOM (Indonesian FDA):'}</strong> {isId ? 'Prinsip Cek KLIK; larangan konsumsi makanan berlendir/tengik/berjamur; kaleng kembung/penyok parah.' : 'Cek KLIK principle; strict ban on slimy/rancid/moldy food; bloated or dented cans.'}</span>
                   </li>
                 </ul>
               </div>
@@ -183,15 +198,15 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
                 <ul className="space-y-2 text-xs font-sans text-slate-700">
                   <li className="flex items-start gap-1.5">
                     <span className="text-sky-600 font-bold">•</span>
-                    <span>Struktur hierarki gerbang: <code>REJECT &gt; REVIEW &gt; PASS</code> (kondisi REJECT tidak boleh ditimpa skor tinggi).</span>
+                    <span>{isId ? 'Struktur hierarki gerbang: ' : 'Gate hierarchy: '}<code>REJECT &gt; REVIEW &gt; PASS</code> {isId ? '(kondisi REJECT tidak boleh ditimpa skor tinggi).' : '(REJECT conditions cannot be overridden by scores).'}</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="text-sky-600 font-bold">•</span>
-                    <span>Pemetaan jalur non-konsumsi: pemisahan limbah organik untuk kompos vs limbah bahaya kemasan untuk pembuangan khusus.</span>
+                    <span>{isId ? 'Pemetaan jalur non-konsumsi: pemisahan limbah organik untuk kompos vs limbah bahaya kemasan untuk pembuangan khusus.' : 'Non-consumption routing: organic waste to compost vs packaging hazard to safe disposal.'}</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="text-sky-600 font-bold">•</span>
-                    <span>Pemblokiran otomatis penugasan mitra bank makanan jika status belum berstatus PASS.</span>
+                    <span>{isId ? 'Pemblokiran otomatis penugasan mitra bank makanan jika status belum berstatus PASS.' : 'Automated blockage of consumption routing until status is confirmed PASS.'}</span>
                   </li>
                 </ul>
               </div>
@@ -207,15 +222,15 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
                 <ul className="space-y-2 text-xs font-sans text-slate-700">
                   <li className="flex items-start gap-1.5">
                     <span className="text-amber-600 font-bold">•</span>
-                    <span><strong>Keterbatasan Input:</strong> Evaluasi bergantung pada kejujuran dan ketepatan data yang diinput staf pengirim.</span>
+                    <span><strong>{isId ? 'Keterbatasan Input:' : 'Input Boundary:'}</strong> {isId ? 'Evaluasi bergantung pada kejujuran dan ketepatan data yang diinput staf pengirim.' : 'Screening relies entirely on the honesty and accuracy of user-reported data.'}</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="text-amber-600 font-bold">•</span>
-                    <span><strong>Bukan Sertifikasi:</strong> Sistem tidak menggantikan inspeksi fisik langsung oleh inspektur kesehatan pangan bersertifikat.</span>
+                    <span><strong>{isId ? 'Bukan Sertifikasi:' : 'Not a Certification:'}</strong> {isId ? 'Sistem tidak menggantikan inspeksi fisik langsung oleh inspektur kesehatan pangan bersertifikat.' : 'The system does not replace on-site physical inspections by certified food safety officers.'}</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <span className="text-amber-600 font-bold">•</span>
-                    <span><strong>Uji Fisik Diperlukan:</strong> Mitra penerima tetap diwajibkan melakukan verifikasi organoleptik saat serah terima.</span>
+                    <span><strong>{isId ? 'Uji Fisik Diperlukan:' : 'On-Site Verification:'}</strong> {isId ? 'Mitra penerima tetap diwajibkan melakukan verifikasi organoleptik saat serah terima.' : 'Receiving partners must perform sensory organoleptic verification during physical handover.'}</span>
                   </li>
                 </ul>
               </div>
@@ -239,10 +254,10 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <span className="text-[11px] font-display font-extrabold uppercase text-brand-600 tracking-wider">
-                        {source.publisher}
+                        {isId ? source.publisher : (source.publisherEn || source.publisher)}
                       </span>
                       <h4 className="text-lg font-display font-black text-brand-900 mt-0.5">
-                        {source.title}
+                        {isId ? source.title : (source.titleEn || source.title)}
                       </h4>
                     </div>
 
@@ -295,7 +310,7 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
       {activeTab === 'learning-modules' && (
         <div className="space-y-8 animate-fadeIn">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {LEARN_MODULES.map((mod) => (
+            {modules.map((mod) => (
               <div key={mod.id} className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-150 shadow-card space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold">

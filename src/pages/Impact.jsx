@@ -38,8 +38,20 @@ import Button from '../components/Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
-  const isId = lang === 'id';
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
+  const isId = currentLang === 'id';
 
   const [reports, setReports] = useState(() => getReports());
   const [showFormulaModal, setShowFormulaModal] = useState(false);
@@ -52,7 +64,7 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
     return () => window.removeEventListener('replate:storage-update', handleUpdate);
   }, []);
 
-  const perf = calculateRescuePerformance(reports, lang);
+  const perf = calculateRescuePerformance(reports, currentLang);
   const { kpis, statusOverview, bottlenecks, funnel, longestWaiting, economics, environmentalSecondary } = perf;
 
   const handleClearDemo = () => {

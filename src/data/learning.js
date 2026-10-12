@@ -1,9 +1,152 @@
 /**
  * REPLATE Educational Knowledge Base
  * Structured across five core modules: Understand, Trace, Rescue, Prevent, Impact.
+ * Fully bilingual (Indonesian & English).
  */
 
-export const LEARN_MODULES = [
+export const LEARN_MODULES_ID = [
+  {
+    id: 'understand',
+    title: 'Pahami (Understand)',
+    subtitle: 'Perbedaan mendasar antara makanan surplus dan limbah pangan',
+    icon: 'BookOpen',
+    topics: [
+      {
+        id: 'u1',
+        title: 'Surplus vs Sampah: Jendela Waktu Penentu',
+        summary: 'Surplus adalah pangan layak makan yang melebihi kebutuhan sesaat. Makanan baru menjadi sampah saat kehilangan rute penyaluran yang tepat waktu.',
+        takeaways: [
+          'Surplus adalah aset dengan nilai gizi dan nilai ekonomi yang masih utuh.',
+          'Sampah terbentuk saat latensi logistik melampaui sisa masa simpan makanan.',
+          'Kecepatan rute distribusi adalah variabel intervensi yang paling menentukan.'
+        ],
+        quote: 'Makanan menjadi sampah bukan karena berlebih, tetapi karena terlupakan.'
+      },
+      {
+        id: 'u2',
+        title: 'Kendala Utama Penyelamatan Pangan',
+        summary: 'Sebagian besar surplus terbuang bukan karena disengaja, melainkan karena pelaku usaha menghadapi kesulitan koordinasi mencari penerima yang tepat dalam jam operasional yang sempit.',
+        takeaways: [
+          'Tingginya biaya koordinasi manual menghambat inisiatif donasi spontan.',
+          'Kekhawatiran tanggung jawab keamanan pangan menciptakan keraguan tanpa protokol yang jelas.',
+          'Sistem pendukung keputusan menghilangkan beban pikiran staf di akhir jam kerja.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'trace',
+    title: 'Telusuri (Trace)',
+    subtitle: 'Titik munculnya susut dan surplus di sepanjang rantai pasok pangan',
+    icon: 'GitFork',
+    stages: [
+      {
+        step: '01',
+        name: 'Produksi Pertanian',
+        lossFactor: '14%',
+        drivers: 'Standar estetika fisik, fluktuasi harga panen, anomali cuaca.',
+        routingOpportunity: 'Jaringan pemungutan hasil panen sisa & pengolahan sekunder.'
+      },
+      {
+        step: '02',
+        name: 'Pascapanen & Penyimpanan',
+        lossFactor: '8%',
+        drivers: 'Rantai dingin terputus, kelembapan gudang tidak tepat, hama simpanan.',
+        routingOpportunity: 'Penyaluran inventaris dinamis sebelum penurunan mutu.'
+      },
+      {
+        step: '03',
+        name: 'Pengolahan & Manufaktur',
+        lossFactor: '6%',
+        drivers: 'Sisa pemotongan, kelebihan kapasitas produksi batch, kesalahan label kemasan.',
+        routingOpportunity: 'Upcycling dan valorisasi produk sampingan.'
+      },
+      {
+        step: '04',
+        name: 'Grosir & Ritel',
+        lossFactor: '9%',
+        drivers: 'Pemesanan berlebih, kebingungan label tanggal, stok display berlebih.',
+        routingOpportunity: 'Pengumpulan massal bank makanan & clearance harga terjangkau.'
+      },
+      {
+        step: '05',
+        name: 'Layanan Makanan & Katering',
+        lossFactor: '17%',
+        drivers: 'Perkiraan jumlah tamu prasmanan tidak pasti, overproduksi buffer.',
+        routingOpportunity: 'Redistribusi cepat hari yang sama makanan panas/dingin REPLATE.'
+      },
+      {
+        step: '06',
+        name: 'Konsumsi Rumah Tangga',
+        lossFactor: '46%',
+        drivers: 'Pembelian berlebih, kurangnya perencanaan menu, salah tafsir tanggal kedaluwarsa.',
+        routingOpportunity: 'Berbagi antartetangga & pemisahan limbah organik.'
+      }
+    ]
+  },
+  {
+    id: 'rescue',
+    title: 'Selamatkan (Rescue)',
+    subtitle: 'Logistik pencocokan surplus dengan kebutuhan masyarakat',
+    icon: 'Repeat',
+    principles: [
+      {
+        title: 'Verifikasi Suhu & Waktu',
+        detail: 'Makanan panas wajib dijaga >60°C atau didinginkan cepat ke <4°C dalam 2 jam untuk mencegah perkembangbiakan patogen.'
+      },
+      {
+        title: 'Penyaluran Sadar Kapasitas',
+        detail: 'Pencocokan harus memperhitungkan daya tampung penerima agar beban penanganan tidak beralih menjadi sampah di dapur relawan.'
+      },
+      {
+        title: 'Prioritas Radius Terdekat',
+        detail: 'Makanan matang siap saji mendesak dicocokkan dalam radius 5 km untuk menjaga integritas suhu dan meminimalkan emisi armada.'
+      }
+    ]
+  },
+  {
+    id: 'prevent',
+    title: 'Cegah (Prevent)',
+    subtitle: 'Menghilangkan surplus sebelum terbentuk di dapur',
+    icon: 'ShieldCheck',
+    strategies: [
+      {
+        title: 'Kalibrasi Porsi & Buffer Masak',
+        detail: 'Kurangi kelebihan porsi standar dari 15% menjadi 5% melalui metode memasak bertahap (progressive cooking) pada perhotelan.'
+      },
+      {
+        title: 'Penjadwalan Masak Ber-Shift',
+        detail: 'Siapkan hidangan mudah rusak dalam 2 sesi memasak kecil alih-alih 1 porsi raksasa di awal hari.'
+      },
+      {
+        title: 'Pengadaan Berbasis Data Nyata',
+        detail: 'Audit kategori surplus mingguan secara rutin untuk mengenali ketidaksesuaian pola pemesanan bahan baku.'
+      }
+    ]
+  },
+  {
+    id: 'impact',
+    title: 'Dampak (Impact)',
+    subtitle: 'Manfaat ekologis dan sosial dari makanan yang berhasil diselamatkan',
+    icon: 'TrendingUp',
+    metrics: [
+      {
+        label: 'Energi & Air Terkandung',
+        desc: 'Setiap kilogram makanan yang terbuang juga menyia-nyiakan pupuk, bahan bakar armada, dan 250+ liter air yang digunakan untuk menanamnya.'
+      },
+      {
+        label: 'Pencegahan Gas Metana',
+        desc: 'Pangan yang membusuk secara anaerobik di TPA menghasilkan gas metana—gas rumah kaca 28x lebih berbahaya dari CO₂.'
+      },
+      {
+        label: 'Martabat Manusia & Gizi',
+        desc: 'Mengalihkan makanan bergizi utuh secara langsung memberikan asupan seimbang dan kaya protein bagi keluarga yang membutuhkan.'
+      }
+    ]
+  }
+];
+
+export const LEARN_MODULES_EN = [
   {
     id: 'understand',
     title: 'Understand',
@@ -144,3 +287,9 @@ export const LEARN_MODULES = [
     ]
   }
 ];
+
+export function getLearnModules(lang = 'id') {
+  return lang === 'en' ? LEARN_MODULES_EN : LEARN_MODULES_ID;
+}
+
+export const LEARN_MODULES = LEARN_MODULES_ID;

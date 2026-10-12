@@ -19,8 +19,20 @@ export default function Assessment({
   onNavigate,
   lang = getActiveLanguage()
 }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
-  const isId = lang === 'id';
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
+  const isId = currentLang === 'id';
 
   const [processingIndex, setProcessingIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(true);
@@ -58,16 +70,16 @@ export default function Assessment({
 
   // 1. Evaluate Food Safety Gate FIRST
   const foodSafetyGate = useMemo(() => {
-    return evaluateFoodSafetyGate(currentReport, lang);
-  }, [currentReport, lang]);
+    return evaluateFoodSafetyGate(currentReport, currentLang);
+  }, [currentReport, currentLang]);
 
   // 2. Evaluate Rescue Score, Route Engine, and Matching Engine with Gate Constraints
   const assessmentResult = useMemo(() => {
-    const scoreResult = calculateRescueScore(currentReport, lang, foodSafetyGate);
+    const scoreResult = calculateRescueScore(currentReport, currentLang, foodSafetyGate);
     const routeResult = determineRoute({
       ...currentReport,
       foodSafetyGate
-    }, lang);
+    }, currentLang);
 
     const matchedDestinations = matchDestinations({
       foodTypeId: currentReport.foodTypeId,
@@ -76,7 +88,7 @@ export default function Assessment({
       recommendedRoute: routeResult.route,
       timeWindowId: currentReport.timeWindowId,
       foodSafetyGate
-    }, lang);
+    }, currentLang);
 
     return {
       score: scoreResult.score,
@@ -91,7 +103,7 @@ export default function Assessment({
       matches: matchedDestinations,
       gate: foodSafetyGate
     };
-  }, [currentReport, lang, foodSafetyGate]);
+  }, [currentReport, currentLang, foodSafetyGate]);
 
   const PROCESSING_STEPS = isId ? [
     'MEMERIKSA GERBANG FOOD SAFETY GATE (WHO • KEMENKES • BPOM)...',

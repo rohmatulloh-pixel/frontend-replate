@@ -27,11 +27,23 @@ import Button from '../components/Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage() }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
-  const isId = lang === 'id';
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
 
-  const [activePreset, setActivePreset] = useState('');
-  const [userEditedNotes, setUserEditedNotes] = useState(false);
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => {
+      setCurrentLang(e.detail || getActiveLanguage());
+    };
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
+  const isId = currentLang === 'id';
+
   const [showAdvancedSafety, setShowAdvancedSafety] = useState(false);
 
   const [formData, setFormData] = useState(() => ({
@@ -53,31 +65,6 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
   }));
 
   const [errors, setErrors] = useState({});
-
-  // Synchronize notes with language switch if user hasn't typed custom notes
-  useEffect(() => {
-    if (!userEditedNotes) {
-      if (activePreset === 'rice') {
-        setFormData(prev => ({ ...prev, notes: t.report.presetRiceNotes }));
-      } else if (activePreset === 'veggies') {
-        setFormData(prev => ({ ...prev, notes: t.report.presetVeggiesNotes }));
-      } else if (activePreset === 'bread') {
-        setFormData(prev => ({ ...prev, notes: t.report.presetBreadNotes }));
-      } else {
-        setFormData(prev => ({ ...prev, notes: t.report.defaultNotes }));
-      }
-    }
-  }, [lang, activePreset, userEditedNotes, t]);
-
-  const loadPreset = (presetKey, presetPayload) => {
-    setActivePreset(presetKey);
-    setUserEditedNotes(false);
-    setFormData(prev => ({
-      ...prev,
-      ...presetPayload
-    }));
-    setErrors({});
-  };
 
   const validate = () => {
     const errs = {};
@@ -184,76 +171,6 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
         <p className="text-sm font-sans font-semibold text-slate-600 max-w-xl mx-auto">
           {t.report.subtitle}
         </p>
-
-        {/* Quick Presets */}
-        <div className="pt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-display">
-          <span className="text-slate-500 font-extrabold uppercase text-[11px] mr-1">
-            {t.report.presetsLabel}
-          </span>
-          <button
-            type="button"
-            onClick={() => loadPreset('rice', {
-              foodTypeId: 'cooked-rice',
-              quantity: '8',
-              unit: 'kg',
-              conditionId: 'suitable',
-              safetyConditionId: 'no_visible_damage',
-              storageHistoryId: 'known_compliant',
-              storageTempId: 'hot_holding_above_60',
-              storageDurationHours: '1.5',
-              packagingConditionId: 'intact_proper',
-              handlingIntegrityId: 'hygienic_separated',
-              timeWindowId: '1_3h',
-              sourceContextId: 'Catering',
-              notes: t.report.presetRiceNotes
-            })}
-            className="px-3.5 py-1.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-950 font-extrabold border border-amber-300 transition-all shadow-sm active:scale-95"
-          >
-            {t.report.presetRice}
-          </button>
-          <button
-            type="button"
-            onClick={() => loadPreset('veggies', {
-              foodTypeId: 'fresh-vegetables',
-              quantity: '4.2',
-              unit: 'kg',
-              conditionId: 'fresh_excellent',
-              safetyConditionId: 'no_visible_damage',
-              storageHistoryId: 'known_compliant',
-              storageTempId: 'cold_holding_below_4',
-              storageDurationHours: '3.0',
-              packagingConditionId: 'not_applicable_fresh',
-              handlingIntegrityId: 'hygienic_separated',
-              timeWindowId: '3_6h',
-              sourceContextId: 'Restaurant',
-              notes: t.report.presetVeggiesNotes
-            })}
-            className="px-3.5 py-1.5 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-950 font-extrabold border border-emerald-300 transition-all shadow-sm active:scale-95"
-          >
-            {t.report.presetVeggies}
-          </button>
-          <button
-            type="button"
-            onClick={() => loadPreset('bread', {
-              foodTypeId: 'bread-pastries',
-              quantity: '3',
-              unit: 'kg',
-              conditionId: 'suitable',
-              safetyConditionId: 'no_visible_damage',
-              storageHistoryId: 'known_compliant',
-              storageTempId: 'ambient_room_temp',
-              storageDurationHours: '6.0',
-              packagingConditionId: 'intact_proper',
-              handlingIntegrityId: 'hygienic_separated',
-              timeWindowId: 'over_6h',
-              sourceContextId: 'Retail',
-              notes: t.report.presetBreadNotes
-            })}
-            className="px-3.5 py-1.5 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-950 font-extrabold border border-yellow-300 transition-all shadow-sm active:scale-95"
-          >
-            {t.report.presetBread}
-          </button>
-        </div>
       </div>
 
       {/* Main Form Container */}

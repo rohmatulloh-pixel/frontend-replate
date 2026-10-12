@@ -6,7 +6,20 @@ import { getFoodDisplayName, getRouteDisplayName } from '../utils/calculations';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Home({ onNavigate, lang = getActiveLanguage() }) {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
+  const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+
+  useEffect(() => {
+    setCurrentLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    window.addEventListener('replate:language-change', handleLangChange);
+    return () => window.removeEventListener('replate:language-change', handleLangChange);
+  }, []);
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
+  const isId = currentLang === 'id';
   const [reports, setReports] = useState(() => getReports());
 
   useEffect(() => {

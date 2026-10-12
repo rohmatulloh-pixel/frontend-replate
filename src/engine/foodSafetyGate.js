@@ -21,7 +21,9 @@ export const OFFICIAL_SAFETY_SOURCES = [
   {
     id: 'who-food-safety',
     title: 'Food Safety Fact Sheet & 5 Keys to Safer Food',
+    titleEn: 'Food Safety Fact Sheet & 5 Keys to Safer Food',
     publisher: 'World Health Organization (WHO)',
+    publisherEn: 'World Health Organization (WHO)',
     url: 'https://www.who.int/news-room/fact-sheets/detail/food-safety',
     principles: [
       'Pencegahan bahaya biologis (patogen bakteri seperti Salmonella, E. coli, B. cereus), kimia, dan fisik.',
@@ -37,7 +39,9 @@ export const OFFICIAL_SAFETY_SOURCES = [
   {
     id: 'who-summer-advice',
     title: 'Public Health Advice on Food Safety',
+    titleEn: 'Public Health Advice on Food Safety',
     publisher: 'World Health Organization (WHO)',
+    publisherEn: 'World Health Organization (WHO)',
     url: 'https://www.who.int/news-room/fact-sheets/item/public-health-advice-on-food-safety-during-summer',
     principles: [
       'Proliferasi bakteri terjadi sangat cepat pada suhu ruang dalam hitungan jam.',
@@ -51,7 +55,9 @@ export const OFFICIAL_SAFETY_SOURCES = [
   {
     id: 'kemenkes-jasaboga',
     title: 'Pedoman Higiene Sanitasi Pangan Siap Saji',
+    titleEn: 'Guidelines on Ready-to-Eat Food Hygiene & Sanitation',
     publisher: 'Kementerian Kesehatan Republik Indonesia',
+    publisherEn: 'Ministry of Health, Republic of Indonesia',
     url: 'https://kemkes.go.id/',
     jdihUrl: 'https://jdih.kemkes.go.id/',
     principles: [
@@ -68,7 +74,9 @@ export const OFFICIAL_SAFETY_SOURCES = [
   {
     id: 'bpom-pjas-klik',
     title: 'Prinsip Keamanan Pangan & Pedoman Cek KLIK',
+    titleEn: 'Food Safety Principles & Cek KLIK Guidelines',
     publisher: 'Badan Pengawas Obat dan Makanan (BPOM RI)',
+    publisherEn: 'Indonesian FDA (BPOM RI)',
     url: 'https://www.pom.go.id/berita/keamanan-pangan-jajanan-anak-sekolah-%28pjas%29',
     principles: [
       'Prinsip Cek KLIK: Kemasan utuh, Label terbaca, Izin edar resmi, dan Kedaluwarsa belum terlampaui.',
