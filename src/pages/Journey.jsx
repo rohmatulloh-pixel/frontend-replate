@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { getReports, updateJourneyStatus, deleteReport, loadDemoData } from '../utils/storage';
+import { getReports, updateJourneyStatus, deleteReport, loadDemoData, getCurrentUser } from '../utils/storage';
 import { getFoodDisplayName } from '../utils/calculations';
 import JourneyTimeline from '../components/JourneyTimeline';
 import EmptyState from '../components/EmptyState';
@@ -9,6 +9,7 @@ import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
   const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
 
   useEffect(() => {
     setCurrentLang(lang);
@@ -16,8 +17,13 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
 
   useEffect(() => {
     const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    const handleAuthChange = (e) => setCurrentUser(e.detail || getCurrentUser());
     window.addEventListener('replate:language-change', handleLangChange);
-    return () => window.removeEventListener('replate:language-change', handleLangChange);
+    window.addEventListener('replate:auth-change', handleAuthChange);
+    return () => {
+      window.removeEventListener('replate:language-change', handleLangChange);
+      window.removeEventListener('replate:auth-change', handleAuthChange);
+    };
   }, []);
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
@@ -33,6 +39,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
   const refreshReports = () => {
     const data = getReports();
     setReports(data);
+    setCurrentUser(getCurrentUser());
   };
 
   useEffect(() => {
@@ -74,11 +81,29 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-sky-200/60">
         <div>
+          {currentUser && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-extrabold bg-teal-50 text-teal-900 border border-brand-300">
+                <span>{currentUser.avatar}</span>
+                <span>{currentUser.name}</span>
+                <span className="text-teal-400 font-normal">•</span>
+                <span className="font-semibold text-teal-800">{currentUser.badgeText}</span>
+              </span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-5xl font-display font-black text-brand-900 tracking-tight">
             {t.journey.title}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 font-sans font-semibold mt-1">
-            {t.journey.subtitle}
+            {currentUser?.role === 'supplier'
+              ? (isId
+                  ? 'Pantau status serah terima makanan dari dapur Anda (Dapur Grand Catering) menuju mitra tujuan.'
+                  : 'Track surplus food handover from your kitchen (Dapur Grand Catering) to receiving partners.')
+              : currentUser?.role === 'mitra'
+              ? (isId
+                  ? 'Pantau kiriman surplus makanan yang dialokasikan dan sedang diantar menuju Dapur Umum Mandiri.'
+                  : 'Track surplus food allocated and in transit towards Dapur Umum Mandiri.')
+              : t.journey.subtitle}
           </p>
         </div>
 
@@ -200,6 +225,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
                 report={activeReport}
                 onAdvanceStatus={handleAdvance}
                 lang={lang}
+                currentUser={currentUser}
               />
             ) : (
               <div className="bg-white rounded-3xl p-8 text-center text-slate-500 border border-slate-100 font-display">

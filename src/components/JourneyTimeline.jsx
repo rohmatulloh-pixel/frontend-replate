@@ -9,7 +9,8 @@ export default function JourneyTimeline({
   report,
   onAdvanceStatus,
   readOnly = false,
-  lang = getActiveLanguage()
+  lang = getActiveLanguage(),
+  currentUser = null
 }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
 
@@ -38,15 +39,16 @@ export default function JourneyTimeline({
     if (!nextStep || !onAdvanceStatus) return;
 
     if (nextStep.id === 'RECEIVED') {
+      const recipientName = currentUser?.role === 'mitra' ? (currentUser.name || 'Dapur Umum Mandiri') : 'mitra tujuan';
       const promptMsg = lang === 'id'
-        ? `Konfirmasi penerimaan makanan.\nMasukkan berat aktual yang diterima (kg) atau tekan OK untuk berat ${report.quantity} kg:`
-        : `Confirm food delivery intake.\nEnter actual weight received (kg) or press OK for ${report.quantity} kg:`;
+        ? `Konfirmasi penerimaan pangan (${recipientName}).\nMasukkan berat aktual yang diterima (kg) atau tekan OK untuk berat ${report.quantity} kg:`
+        : `Confirm food delivery intake (${recipientName}).\nEnter actual weight received (kg) or press OK for ${report.quantity} kg:`;
       const inputWeight = window.prompt(promptMsg, String(report.quantity));
       if (inputWeight === null) return; // cancelled prompt
       const parsedKg = parseFloat(inputWeight);
       const actualReceivedKg = (!isNaN(parsedKg) && parsedKg > 0) ? parsedKg : Number(report.quantity) || 0;
 
-      onAdvanceStatus(report.id, 'RECEIVED', `Diterima di tujuan: ${actualReceivedKg} kg`, {
+      onAdvanceStatus(report.id, 'RECEIVED', `Diterima di tujuan (${recipientName}): ${actualReceivedKg} kg`, {
         actualReceivedKg,
         receivedAt: new Date().toISOString()
       });
@@ -110,6 +112,22 @@ export default function JourneyTimeline({
                     : report.foodSafetyGate.status === 'REVIEW'
                     ? (lang === 'id' ? 'Review Diperlukan' : 'Review Needed')
                     : (lang === 'id' ? 'Ditolak Konsumsi' : 'Inedible')})
+                </span>
+              </span>
+            </div>
+          )}
+
+          {/* User Role Context Pill */}
+          {currentUser && (
+            <div className="pt-2 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-extrabold bg-teal-50 text-teal-900 border border-brand-300">
+                <span>{currentUser.avatar}</span>
+                <span>
+                  {currentUser.role === 'supplier'
+                    ? (lang === 'id' ? 'Pengirim: Dapur Grand Catering' : 'Donor: Dapur Grand Catering')
+                    : currentUser.role === 'mitra'
+                    ? (lang === 'id' ? 'Penerima: Dapur Umum Mandiri' : 'Receiver: Dapur Umum Mandiri')
+                    : (lang === 'id' ? 'Administrator Operasional' : 'Operations Admin')}
                 </span>
               </span>
             </div>
@@ -235,8 +253,12 @@ export default function JourneyTimeline({
               className="w-full sm:w-auto px-6 py-3 text-xs shadow-sun font-display font-black"
             >
               {nextStep.id === 'RECEIVED'
-                ? (lang === 'id' ? 'Konfirmasi Diterima & Terselamatkan 🎉' : 'Confirm Received & Rescued 🎉')
-                : (lang === 'id' ? 'Perbarui Status Pengiriman →' : 'Advance Status →')}
+                ? (currentUser?.role === 'mitra'
+                    ? (lang === 'id' ? 'Konfirmasi Pangan Tiba & Diterima (Mitra) ✅' : 'Confirm Delivery Intake & Received (Mitra) ✅')
+                    : (lang === 'id' ? 'Konfirmasi Diterima & Terselamatkan 🎉' : 'Confirm Received & Rescued 🎉'))
+                : (currentUser?.role === 'supplier' && currentStatus === 'REPORTED'
+                    ? (lang === 'id' ? 'Serahkan ke Kurir / Mulai Penyelamatan 🚚' : 'Handover to Logistics 🚚')
+                    : (lang === 'id' ? 'Perbarui Status Pengiriman →' : 'Advance Status →'))}
             </Button>
           )}
         </div>

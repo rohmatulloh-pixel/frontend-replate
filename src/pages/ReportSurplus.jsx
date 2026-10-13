@@ -24,20 +24,25 @@ import {
 } from '../data/foods';
 import Button from '../components/Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
+import { getCurrentUser } from '../utils/storage';
 
 export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage() }) {
   const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
 
   useEffect(() => {
     setCurrentLang(lang);
   }, [lang]);
 
   useEffect(() => {
-    const handleLangChange = (e) => {
-      setCurrentLang(e.detail || getActiveLanguage());
-    };
+    const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    const handleAuthChange = (e) => setCurrentUser(e.detail || getCurrentUser());
     window.addEventListener('replate:language-change', handleLangChange);
-    return () => window.removeEventListener('replate:language-change', handleLangChange);
+    window.addEventListener('replate:auth-change', handleAuthChange);
+    return () => {
+      window.removeEventListener('replate:language-change', handleLangChange);
+      window.removeEventListener('replate:auth-change', handleAuthChange);
+    };
   }, []);
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
@@ -127,7 +132,13 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
       quantity: parseFloat(formData.quantity),
       conditionLabel: getConditionText(formData.conditionId).label || selectedCondition.label,
       availableTimeLabel: getTimeWindowText(formData.timeWindowId) || selectedTime.label,
-      notes: formData.notes.trim()
+      notes: formData.notes.trim(),
+      reportedBy: currentUser ? {
+        id: currentUser.id,
+        name: currentUser.name,
+        organization: currentUser.organization,
+        role: currentUser.role
+      } : null
     };
 
     if (onSubmitReport) {
@@ -165,6 +176,17 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
         <p className="text-sm font-sans font-semibold text-slate-600 max-w-xl mx-auto">
           {t.report.subtitle}
         </p>
+
+        {currentUser && (
+          <div className="pt-2 flex justify-center">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-display font-extrabold bg-teal-50 text-teal-900 border border-brand-300">
+              <span>{currentUser.avatar}</span>
+              <span>{currentUser.name}</span>
+              <span className="text-teal-400 font-normal">•</span>
+              <span className="font-semibold text-teal-800">{currentUser.badgeText}</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Main Form Container */}

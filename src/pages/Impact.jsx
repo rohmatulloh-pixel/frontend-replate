@@ -17,7 +17,7 @@ import {
   ExternalLink,
   Trash2
 } from 'lucide-react';
-import { getReports, clearAllData, loadDemoData, clearDemoData } from '../utils/storage';
+import { getReports, clearAllData, loadDemoData, clearDemoData, getCurrentUser } from '../utils/storage';
 import { 
   calculateRescuePerformance, 
   getFoodDisplayName, 
@@ -38,6 +38,7 @@ import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
   const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
 
   useEffect(() => {
     setCurrentLang(lang);
@@ -45,8 +46,13 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
 
   useEffect(() => {
     const handleLangChange = (e) => setCurrentLang(e.detail || getActiveLanguage());
+    const handleAuthChange = (e) => setCurrentUser(e.detail || getCurrentUser());
     window.addEventListener('replate:language-change', handleLangChange);
-    return () => window.removeEventListener('replate:language-change', handleLangChange);
+    window.addEventListener('replate:auth-change', handleAuthChange);
+    return () => {
+      window.removeEventListener('replate:language-change', handleLangChange);
+      window.removeEventListener('replate:auth-change', handleAuthChange);
+    };
   }, []);
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
@@ -58,7 +64,10 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
   const [filterStatus, setFilterStatus] = useState('ALL');
 
   useEffect(() => {
-    const handleUpdate = () => setReports(getReports());
+    const handleUpdate = () => {
+      setReports(getReports());
+      setCurrentUser(getCurrentUser());
+    };
     window.addEventListener('replate:storage-update', handleUpdate);
     return () => window.removeEventListener('replate:storage-update', handleUpdate);
   }, []);
@@ -95,14 +104,27 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
       {/* 1. Header & Operational Status Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-sky-200/60">
         <div>
-          {perf.hasDemoData && (
-            <div className="flex items-center gap-2.5 flex-wrap mb-2">
+          <div className="flex items-center gap-2.5 flex-wrap mb-2">
+            {perf.hasDemoData && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-extrabold bg-amber-50 text-amber-900 border border-amber-300">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
                 {t.impact.badgeDemo}
               </span>
-            </div>
-          )}
+            )}
+
+            {currentUser && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-extrabold bg-teal-50 text-teal-900 border border-brand-300">
+                <span>{currentUser.avatar}</span>
+                <span>
+                  {currentUser.role === 'supplier'
+                    ? (isId ? 'Perspektif Penyedia: Dapur Grand Catering' : 'Donor Perspective: Dapur Grand Catering')
+                    : currentUser.role === 'mitra'
+                    ? (isId ? 'Perspektif Penerima: Dapur Umum Mandiri' : 'Recipient Perspective: Dapur Umum Mandiri')
+                    : (isId ? 'Perspektif Operasional: Admin' : 'Operations Perspective: Admin')}
+                </span>
+              </span>
+            )}
+          </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-brand-900 tracking-tight">
             {t.impact.title}
