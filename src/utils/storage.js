@@ -205,11 +205,16 @@ export function getCuratedDemoReports() {
       rescueScore: 92,
       priority: 'HIGH PRIORITY',
       journeyStatus: 'RECEIVED',
+      reportedBy: {
+        id: 'usr-supplier',
+        name: 'Dapur Grand Catering',
+        role: 'supplier'
+      },
       createdAt: h(2.5),
       receivedAt: h(0.5),
       selectedDestination: {
-        id: 'dest-kitchen-a',
-        name: 'Dapur Komunitas Menteng',
+        id: 'dest-mitra',
+        name: 'Dapur Umum Mandiri',
         demoDistanceKm: 2.4,
         type: 'Community Kitchen'
       },
@@ -227,9 +232,9 @@ export function getCuratedDemoReports() {
         { status: 'REPORTED', timestamp: h(2.5), note: 'Surplus intake tercatat: 15 kg Nasi Matang (Katering)' },
         { status: 'ASSESSED', timestamp: h(2.4), note: 'Food Safety Gate: PASS • Skor: 92/100' },
         { status: 'ROUTE_SELECTED', timestamp: h(2.3), note: 'Rute: Distribusi Langsung (Konsumsi)' },
-        { status: 'MATCHED', timestamp: h(2.0), note: 'Dipasangkan dengan Dapur Komunitas Menteng' },
+        { status: 'MATCHED', timestamp: h(2.0), note: 'Dipasangkan dengan Dapur Umum Mandiri' },
         { status: 'RESCUE_INITIATED', timestamp: h(1.2), note: 'Armada logistik dalam perjalanan' },
-        { status: 'RECEIVED', timestamp: h(0.5), note: 'Diterima fisik di tujuan: 14.5 kg terverifikasi' }
+        { status: 'RECEIVED', timestamp: h(0.5), note: 'Diterima fisik di Dapur Umum Mandiri: 14.5 kg terverifikasi' }
       ]
     },
     {
@@ -244,18 +249,23 @@ export function getCuratedDemoReports() {
       rescueScore: 88,
       priority: 'HIGH PRIORITY',
       journeyStatus: 'RESCUE_INITIATED',
+      reportedBy: {
+        id: 'usr-supplier',
+        name: 'Dapur Grand Catering',
+        role: 'supplier'
+      },
       createdAt: h(1.5),
       selectedDestination: {
-        id: 'dest-foodbank-b',
-        name: 'Bank Makanan Jakarta Pusat',
-        demoDistanceKm: 4.8,
-        type: 'Food Bank'
+        id: 'dest-mitra',
+        name: 'Dapur Umum Mandiri',
+        demoDistanceKm: 3.1,
+        type: 'Community Kitchen'
       },
       foodSafetyGate: {
         status: 'PASS',
         eligibleForConsumptionRecommendation: true,
         headline: 'LOLOS PEMERIKSAAN AWAL',
-        summary: 'Sayuran segar bersih dari shift siang restoran.',
+        summary: 'Sayuran segar bersih dari shift siang katering.',
         reasons: ['Kondisi fisik segar prima.', 'Bahan terpisah dari kontaminasi mentah/matang.'],
         missingInformation: [],
         evaluatedAt: h(1.4),
@@ -264,8 +274,8 @@ export function getCuratedDemoReports() {
       journeyEvents: [
         { status: 'REPORTED', timestamp: h(1.5), note: 'Surplus tercatat: 12 kg Sayuran Segar' },
         { status: 'ASSESSED', timestamp: h(1.4), note: 'Food Safety Gate: PASS' },
-        { status: 'MATCHED', timestamp: h(1.0), note: 'Dipasangkan dengan Bank Makanan Jakarta Pusat' },
-        { status: 'RESCUE_INITIATED', timestamp: h(0.3), note: 'Relawan dalam perjalanan penjemputan' }
+        { status: 'MATCHED', timestamp: h(1.0), note: 'Dipasangkan dengan Dapur Umum Mandiri' },
+        { status: 'RESCUE_INITIATED', timestamp: h(0.3), note: 'Relawan dalam perjalanan menuju Dapur Umum Mandiri' }
       ]
     },
     {
@@ -280,12 +290,17 @@ export function getCuratedDemoReports() {
       rescueScore: 78,
       priority: 'MEDIUM PRIORITY',
       journeyStatus: 'MATCHED',
+      reportedBy: {
+        id: 'usr-supplier',
+        name: 'Dapur Grand Catering',
+        role: 'supplier'
+      },
       createdAt: h(1.0),
       selectedDestination: {
-        id: 'dest-center-c',
-        name: 'Dapur Sosial Tebet',
-        demoDistanceKm: 3.2,
-        type: 'Shelter Meal Program'
+        id: 'dest-mitra',
+        name: 'Dapur Umum Mandiri',
+        demoDistanceKm: 2.8,
+        type: 'Community Kitchen'
       },
       foodSafetyGate: {
         status: 'PASS',
@@ -300,7 +315,7 @@ export function getCuratedDemoReports() {
       journeyEvents: [
         { status: 'REPORTED', timestamp: h(1.0), note: 'Surplus tercatat: 8 kg Roti' },
         { status: 'ASSESSED', timestamp: h(0.9), note: 'Food Safety Gate: PASS • Rute: Repurpose' },
-        { status: 'MATCHED', timestamp: h(0.5), note: 'Menunggu konfirmasi armada penjemputan' }
+        { status: 'MATCHED', timestamp: h(0.5), note: 'Alokasi intake disetujui Dapur Umum Mandiri' }
       ]
     },
     {
@@ -315,6 +330,11 @@ export function getCuratedDemoReports() {
       rescueScore: 0,
       priority: 'HOLD',
       journeyStatus: 'REPORTED',
+      reportedBy: {
+        id: 'usr-supplier',
+        name: 'Dapur Grand Catering',
+        role: 'supplier'
+      },
       createdAt: h(0.5),
       foodSafetyGate: {
         status: 'REVIEW',
@@ -344,6 +364,17 @@ export function getCuratedDemoReports() {
       priority: 'MEDIUM PRIORITY',
       journeyStatus: 'CANCELLED',
       cancellationReason: 'Kapasitas pendingin mitra penerima penuh',
+      reportedBy: {
+        id: 'usr-supplier',
+        name: 'Dapur Grand Catering',
+        role: 'supplier'
+      },
+      selectedDestination: {
+        id: 'dest-mitra',
+        name: 'Dapur Umum Mandiri',
+        demoDistanceKm: 2.5,
+        type: 'Community Kitchen'
+      },
       createdAt: h(3.0),
       cancelledAt: h(2.0),
       foodSafetyGate: {
@@ -358,7 +389,7 @@ export function getCuratedDemoReports() {
       },
       journeyEvents: [
         { status: 'REPORTED', timestamp: h(3.0), note: 'Surplus tercatat: 5 kg Lauk' },
-        { status: 'MATCHED', timestamp: h(2.5), note: 'Mitra dicocokkan' },
+        { status: 'MATCHED', timestamp: h(2.5), note: 'Mitra dicocokkan dengan Dapur Umum Mandiri' },
         { status: 'CANCELLED', timestamp: h(2.0), note: 'Dibatalkan: Kapasitas pendingin mitra penerima penuh' }
       ]
     }

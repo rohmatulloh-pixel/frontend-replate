@@ -189,6 +189,39 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
         )}
       </div>
 
+      {/* Contextual Role Banner */}
+      {currentUser?.role === 'mitra' && (
+        <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-sky-950 text-xs font-sans flex items-start gap-3">
+          <span className="text-base">ℹ️</span>
+          <div>
+            <strong className="font-display font-bold block">
+              {isId ? 'Akun Anda: Mitra Penerima (Dapur Umum Mandiri)' : 'Account: Recipient Partner (Dapur Umum Mandiri)'}
+            </strong>
+            <p className="mt-0.5 text-sky-900 leading-relaxed">
+              {isId
+                ? 'Sebagai mitra penerima pangan, fungsi utama Anda adalah memverifikasi dan menerima pasokan masuk pada menu Perjalanan. Gunakan formulir ini hanya jika dapur umum Anda memiliki surplus berlebih tak terduga yang perlu diredistribusikan ke panti atau komunitas lain.'
+                : 'As a food recipient partner, your primary action is accepting incoming deliveries in the Journey tab. Use this form only if your kitchen has unexpected excess meals to redistribute.'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {currentUser?.role === 'supplier' && (
+        <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-950 text-xs font-sans flex items-start gap-3">
+          <span className="text-base">🏪</span>
+          <div>
+            <strong className="font-display font-bold block">
+              {isId ? 'Entitas Donatur: Dapur Grand Catering' : 'Donor Entity: Dapur Grand Catering'}
+            </strong>
+            <p className="mt-0.5 text-teal-900 leading-relaxed">
+              {isId
+                ? 'Input sisa porsi berlebih dari operasional katering Anda. Sistem REPLATE akan otomatis memverifikasi standar Food Safety Gate dan menyalurkannya langsung ke mitra penerima terdekat.'
+                : 'Log surplus food from your catering shift. REPLATE will screen safety standards and pair it directly with nearby recipient partners.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Form Container */}
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-100 shadow-card space-y-8">
         {/* Field 01: Food Type */}

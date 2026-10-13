@@ -144,6 +144,15 @@ export default function JourneyTimeline({
               {lang === 'id' ? 'BERHASIL DISELAMATKAN' : 'SUCCESSFULLY RESCUED'}
             </span>
           </div>
+        ) : isCancelled ? (
+          <div className="px-4 py-2 rounded-2xl bg-rose-50 border border-rose-300 text-left sm:text-right">
+            <span className="block text-[10px] font-display font-bold uppercase tracking-wider text-rose-600">
+              {lang === 'id' ? 'Status Terkini' : 'Current Status'}
+            </span>
+            <span className="text-xs font-display font-black text-rose-700 uppercase">
+              ✕ {lang === 'id' ? 'Dibatalkan' : 'Cancelled'}
+            </span>
+          </div>
         ) : (
           <div className="px-4 py-2 rounded-2xl bg-sky-50 border border-sky-200 text-left sm:text-right">
             <span className="block text-[10px] font-display font-bold uppercase tracking-wider text-slate-400">
@@ -204,11 +213,19 @@ export default function JourneyTimeline({
                   {recordedEvent?.note || step.desc}
                 </p>
 
-                {step.id === 'MATCHED' && isPassed && report.selectedDestination && (
+                {step.id === 'MATCHED' && isPassed && (
                   <div className="mt-2 text-xs font-display font-bold bg-sky-50 p-2 rounded-xl inline-flex items-center gap-2 border border-sky-200 text-sky-900">
-                    <MapPin className="w-3.5 h-3.5 text-brand-600" />
-                    <span>{report.selectedDestination.name}</span>
-                    <span className="text-slate-500">({report.selectedDestination.demoDistanceKm} km)</span>
+                    <MapPin className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                    <span>
+                      {currentUser?.role === 'mitra'
+                        ? (lang === 'id' ? 'Donatur: Dapur Grand Catering → Masuk: Dapur Umum Mandiri' : 'Donor: Dapur Grand Catering → Intake: Dapur Umum Mandiri')
+                        : currentUser?.role === 'supplier'
+                        ? (lang === 'id' ? 'Mitra Penerima: ' : 'Intake Partner: ') + (report.selectedDestination?.name || 'Dapur Umum Mandiri')
+                        : (report.selectedDestination?.name || 'Unassigned')}
+                    </span>
+                    {report.selectedDestination?.demoDistanceKm && (
+                      <span className="text-slate-500">({report.selectedDestination.demoDistanceKm} km)</span>
+                    )}
                   </div>
                 )}
               </div>
