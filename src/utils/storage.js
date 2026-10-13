@@ -9,7 +9,8 @@ import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate.js';
 const STORAGE_KEYS = {
   REPORTS: 'replate_surplus_reports_v1',
   PREFERENCES: 'replate_user_preferences_v1',
-  DEMO_FLAG: 'replate_demo_loaded_v1'
+  DEMO_FLAG: 'replate_demo_loaded_v1',
+  USER_SESSION: 'replate_user_session_v1'
 };
 
 // Custom event to sync components upon storage updates
@@ -410,4 +411,137 @@ export function clearDemoData() {
     return false;
   }
 }
+
+/**
+ * Demo Users Configuration
+ */
+export const DEMO_USERS = {
+  admin: {
+    id: 'usr-admin',
+    username: 'admin',
+    email: 'admin@replate.id',
+    password: 'admin123',
+    role: 'admin',
+    name: 'Administrator',
+    organization: 'REPLATE Operations',
+    avatar: '👑',
+    badgeText: 'Admin Operasional'
+  },
+  supplier: {
+    id: 'usr-supplier',
+    username: 'supplier',
+    email: 'catering@replate.id',
+    password: 'supplier123',
+    role: 'supplier',
+    name: 'Dapur Grand Catering',
+    organization: 'PT Boga Berkah Katering',
+    avatar: '🏪',
+    badgeText: 'Penyedia Surplus'
+  },
+  mitra: {
+    id: 'usr-mitra',
+    username: 'mitra',
+    email: 'mitra@replate.id',
+    password: 'mitra123',
+    role: 'mitra',
+    name: 'Dapur Umum Mandiri',
+    organization: 'Yayasan Peduli Pangan',
+    avatar: '🤝',
+    badgeText: 'Mitra Penerima'
+  }
+};
+
+/**
+ * Dispatch authentication change event
+ */
+const dispatchAuthEvent = (user) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('replate:auth-change', { detail: user }));
+    dispatchStorageEvent();
+  }
+};
+
+/**
+ * Get the currently logged-in user session
+ */
+export function getCurrentUser() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.USER_SESSION);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('[REPLATE Storage] Error reading user session:', err);
+    return null;
+  }
+}
+
+/**
+ * Log in a user using username or email and password
+ */
+export function loginUser(identifier, password) {
+  try {
+    const cleanId = String(identifier || '').trim().toLowerCase();
+    const cleanPw = String(password || '').trim();
+
+    // Match against demo users
+    const matchedKey = Object.keys(DEMO_USERS).find((key) => {
+      const u = DEMO_USERS[key];
+      return (
+        (u.username.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId) &&
+        u.password === cleanPw
+      );
+    });
+
+    if (!matchedKey) {
+      return {
+        success: false,
+        message: 'Username atau kata sandi tidak sesuai akun demo.'
+      };
+    }
+
+    const matchedUser = DEMO_USERS[matchedKey];
+    const sessionUser = {
+      id: matchedUser.id,
+      username: matchedUser.username,
+      email: matchedUser.email,
+      role: matchedUser.role,
+      name: matchedUser.name,
+      organization: matchedUser.organization,
+      avatar: matchedUser.avatar,
+      badgeText: matchedUser.badgeText,
+      loggedInAt: new Date().toISOString()
+    };
+
+    // If Admin logs in, auto-populate simulation data if none exists
+    if (matchedUser.role === 'admin') {
+      const existing = getReports();
+      if (existing.length === 0) {
+        loadDemoData();
+      }
+    }
+
+    localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
+    dispatchAuthEvent(sessionUser);
+    return { success: true, user: sessionUser };
+  } catch (err) {
+    console.error('[REPLATE Storage] Error logging in:', err);
+    return { success: false, message: 'Terjadi kesalahan sistem saat masuk.' };
+  }
+}
+
+/**
+ * Log out the current user
+ */
+export function logoutUser() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.USER_SESSION);
+    dispatchAuthEvent(null);
+    return true;
+  } catch (err) {
+    console.error('[REPLATE Storage] Error logging out:', err);
+    return false;
+  }
+}
+
 

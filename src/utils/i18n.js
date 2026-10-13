@@ -16,6 +16,29 @@ export const TRANSLATIONS = {
       reportButton: '+ Lapor Surplus',
       activeBadge: 'Aktif',
     },
+    // Authentication
+    auth: {
+      loginBtn: 'Masuk',
+      logoutBtn: 'Keluar',
+      loginTitle: 'Masuk ke REPLATE',
+      loginSubtitle: 'Pilih peran atau masukkan akun untuk mengakses dashboard operasional.',
+      usernameLabel: 'Username atau Email',
+      usernamePlaceholder: 'admin / supplier / mitra',
+      passwordLabel: 'Kata Sandi',
+      passwordPlaceholder: 'Masukkan kata sandi',
+      submitBtn: 'Masuk ke Akun ✨',
+      switchRoleBtn: 'Ganti Peran',
+      loggedInAs: 'Masuk sebagai',
+      quickFillLabel: 'Pilihan Akun Demo (Klik untuk Isi Cepat):',
+      adminRole: 'Administrator',
+      supplierRole: 'Penyedia Surplus (Supplier)',
+      mitraRole: 'Mitra Penerima',
+      adminDesc: 'Akses penuh seluruh data & analitik simulasi.',
+      supplierDesc: 'Fokus melapor surplus & melacak penjemputan.',
+      mitraDesc: 'Fokus konfirmasi penerimaan pangan & distribusi.',
+      errorInvalid: 'Username atau kata sandi tidak sesuai akun demo.',
+      demoHelp: 'Kata sandi demo: admin123, supplier123, mitra123'
+    },
     // Home Page
     home: {
       badge: 'Makanan Harus Bergerak. Bukan Terbuang!',
@@ -266,6 +289,29 @@ export const TRANSLATIONS = {
       clearDemo: 'Clear Demo Data',
       reportButton: '+ Report Surplus',
       activeBadge: 'Active',
+    },
+    // Authentication
+    auth: {
+      loginBtn: 'Log In',
+      logoutBtn: 'Log Out',
+      loginTitle: 'Log in to REPLATE',
+      loginSubtitle: 'Choose a role or enter demo credentials to access the operational dashboard.',
+      usernameLabel: 'Username or Email',
+      usernamePlaceholder: 'admin / supplier / mitra',
+      passwordLabel: 'Password',
+      passwordPlaceholder: 'Enter password',
+      submitBtn: 'Log in to Account ✨',
+      switchRoleBtn: 'Switch Role',
+      loggedInAs: 'Signed in as',
+      quickFillLabel: 'Demo Accounts (Click to Quick-Fill):',
+      adminRole: 'Administrator',
+      supplierRole: 'Surplus Provider (Supplier)',
+      mitraRole: 'Recipient Partner',
+      adminDesc: 'Full access to all operations & simulation analytics.',
+      supplierDesc: 'Focus on reporting surplus & dispatch tracking.',
+      mitraDesc: 'Focus on food intake confirmation & distribution.',
+      errorInvalid: 'Invalid username or password for demo accounts.',
+      demoHelp: 'Demo passwords: admin123, supplier123, mitra123'
     },
     // Home Page
     home: {
