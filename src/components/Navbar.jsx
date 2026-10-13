@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
-import { getReports, isDemoMode, loadDemoData, clearDemoData } from '../utils/storage';
+import { getReports, isDemoMode, clearDemoData } from '../utils/storage';
 import { TRANSLATIONS, getActiveLanguage, setActiveLanguage } from '../utils/i18n';
 
 // Real SVG Flags for cross-platform support (Windows laptops, macOS, iOS, Android)
@@ -70,10 +70,6 @@ export default function Navbar({ activePage, onNavigate }) {
     setActiveLanguage(nextLang);
   };
 
-  const handleLoadDemo = () => {
-    loadDemoData();
-    setDemoActive(true);
-  };
 
   const handleClearDemo = () => {
     clearDemoData();
@@ -249,34 +245,6 @@ export default function Navbar({ activePage, onNavigate }) {
                 </button>
               );
             })}
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-            {demoActive ? (
-              <button
-                type="button"
-                onClick={() => {
-                  handleClearDemo();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2 px-3 rounded-full text-xs font-display font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 flex items-center justify-center gap-1.5"
-              >
-                <span>🗑️</span>
-                <span>{t.impact.clearDemoBtn}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  handleLoadDemo();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2 px-3 rounded-full text-xs font-display font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center gap-1.5"
-              >
-                <span>✨</span>
-                <span>{t.impact.loadDemoBtn}</span>
-              </button>
-            )}
           </div>
         </div>
       )}

@@ -41,11 +41,6 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 animate-fadeIn">
       {/* Page Header */}
       <div className="text-center space-y-3 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-teal-100 text-teal-900 font-display font-extrabold text-xs shadow-xs">
-          <BookOpen className="w-3.5 h-3.5 text-teal-700" />
-          <span>{isId ? 'Pusat Edukasi, Sumber & Metodologi Ilmiah' : 'Education, Sources & Scientific Methodology'}</span>
-        </div>
-
         <h1 className="text-3xl sm:text-5xl font-display font-black text-brand-900 tracking-tight">
           {isId ? 'Metodologi & Landasan Sains REPLATE' : 'REPLATE Methodology & Scientific Foundation'}
         </h1>
@@ -395,12 +390,12 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
       )}
 
       {/* Bottom CTA */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h3 className="text-xl font-display font-black text-white">
+      <div className="bg-gradient-to-tr from-brand-600 via-teal-600 to-sky-600 rounded-3xl sm:rounded-[40px] p-8 sm:p-12 text-white shadow-card flex flex-col sm:flex-row items-center justify-between gap-8">
+        <div className="space-y-2 text-center sm:text-left">
+          <h3 className="text-2xl sm:text-3xl font-display font-black text-white leading-tight">
             {isId ? 'Siap Mencoba Alur Penilaian Aman?' : 'Ready to Test Verified Routing?'}
           </h3>
-          <p className="text-xs text-slate-400 font-sans">
+          <p className="text-xs sm:text-sm font-sans font-semibold text-teal-100 max-w-md leading-relaxed">
             {isId
               ? 'Mulai input surplus makanan untuk melihat langsung cara kerja Food Safety Gate dan Rescue Score.'
               : 'Report surplus to observe the Food Safety Gate and Rescue Score in action.'}
@@ -409,9 +404,9 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
 
         <Button
           variant="sun"
-          size="md"
+          size="lg"
           onClick={() => onNavigate('report')}
-          className="text-xs font-display font-black whitespace-nowrap"
+          className="text-xs px-8 py-4 shadow-sun w-full sm:w-auto font-display font-black whitespace-nowrap"
           icon={ArrowRight}
           iconPosition="right"
         >

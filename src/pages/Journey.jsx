@@ -112,9 +112,9 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Master List */}
           <div className="lg:col-span-5 space-y-4">
-            {/* Filter Pills with 100% Readable High-Contrast Buttons */}
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-xs font-display">
-              <span className="text-slate-500 font-extrabold mr-1">Filter:</span>
+            {/* Filter Pills with 100% Readable Uniform Shapes */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 border-b border-slate-100 text-xs font-display">
+              <span className="text-slate-500 font-extrabold mr-1 shrink-0">Filter:</span>
               {[
                 { id: 'ALL', label: t.journey.filterAll },
                 { id: 'ACTIVE', label: t.journey.filterActive },
@@ -126,7 +126,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id)}
-                    className={`px-4 py-1.5 rounded-full uppercase border-2 transition-all ${
+                    className={`whitespace-nowrap h-8 px-4 rounded-full uppercase border-2 inline-flex items-center justify-center text-xs font-display transition-all shrink-0 ${
                       isSelected
                         ? 'bg-brand-500 text-white font-black border-brand-600 shadow-sm'
                         : 'bg-white text-slate-800 font-extrabold hover:bg-slate-50 border-slate-200'

@@ -34,8 +34,6 @@ export default function Assessment({
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
   const isId = currentLang === 'id';
 
-  const [processingIndex, setProcessingIndex] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(true);
   const [selectedDestinationId, setSelectedDestinationId] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [confirmOrganicModalOpen, setConfirmOrganicModalOpen] = useState(false);
@@ -105,34 +103,6 @@ export default function Assessment({
     };
   }, [currentReport, currentLang, foodSafetyGate]);
 
-  const PROCESSING_STEPS = isId ? [
-    'MEMERIKSA GERBANG FOOD SAFETY GATE (WHO • KEMENKES • BPOM)...',
-    'MENGEVALUASI INTEGRITAS SUHU & MASA SIMPAN...',
-    'MEMERIKSA KELAYAKAN REDISTRIBUSI KONSUMSI...',
-    'MENGHITUNG SKOR PRIORITAS PENYELAMATAN...',
-    'MENCOCOKKAN DENGAN MITRA PENERIMA SESUAI...'
-  ] : [
-    'SCREENING WITH FOOD SAFETY GATE (WHO • KEMENKES • BPOM)...',
-    'VERIFYING TEMPERATURE & HOLDING INTEGRITY...',
-    'EVALUATING HUMAN CONSUMPTION ELIGIBILITY...',
-    'CALCULATING RESCUE VIABILITY SCORE...',
-    'MATCHING COMPATIBLE INTAKE RECIPIENTS...'
-  ];
-
-  // Processing animation
-  useEffect(() => {
-    let current = 0;
-    const interval = setInterval(() => {
-      current++;
-      if (current < PROCESSING_STEPS.length) {
-        setProcessingIndex(current);
-      } else {
-        clearInterval(interval);
-        setIsProcessing(false);
-      }
-    }, 150);
-    return () => clearInterval(interval);
-  }, [PROCESSING_STEPS.length]);
 
   const handleUpdateSafetyParameters = (updatedFields) => {
     setCurrentReport(prev => ({
@@ -200,29 +170,6 @@ export default function Assessment({
   const bestMatch = assessmentResult.matches[0];
   const otherMatches = assessmentResult.matches.slice(1);
 
-  if (isProcessing) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-6">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-sun-400 via-teal-500 to-brand-500 text-white flex items-center justify-center text-3xl mx-auto animate-spin shadow-card">
-          🛡️
-        </div>
-        <div>
-          <h2 className="text-2xl font-display font-black text-brand-900">
-            {isId ? 'Memproses Pemeriksaan Keamanan & Penilaian...' : 'Processing Safety Gate & Assessment...'}
-          </h2>
-          <p className="text-xs font-mono font-bold text-teal-700 mt-2 tracking-wider">
-            {PROCESSING_STEPS[processingIndex]}
-          </p>
-        </div>
-        <div className="w-64 h-2.5 bg-slate-200 rounded-full mx-auto overflow-hidden">
-          <div
-            className="h-full bg-brand-500 rounded-full transition-all duration-200"
-            style={{ width: `${((processingIndex + 1) / PROCESSING_STEPS.length) * 100}%` }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 animate-fadeIn">

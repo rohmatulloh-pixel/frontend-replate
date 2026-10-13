@@ -153,7 +153,7 @@ export const TRANSLATIONS = {
     journey: {
       title: 'Pelacakan Pengiriman Makanan',
       subtitle: 'Pantau status serah terima makanan dari dapur Anda hingga sampai dan disajikan di tujuan.',
-      newRescue: '+ Mulai Pengiriman Baru',
+      newRescue: 'Mulai Pengiriman Baru',
       filterAll: 'Semua',
       filterActive: 'Sedang Berjalan',
       filterCompleted: 'Selesai',
@@ -404,7 +404,7 @@ export const TRANSLATIONS = {
     journey: {
       title: 'Rescue Journey Tracker',
       subtitle: 'Follow the custodial handover from your kitchen to the recipient destination.',
-      newRescue: '+ Start New Rescue',
+      newRescue: 'Start New Rescue',
       filterAll: 'All',
       filterActive: 'In Motion',
       filterCompleted: 'Completed',
