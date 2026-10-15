@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Trash2
 } from 'lucide-react';
-import { getReports, loadDemoData, clearDemoData, getCurrentUser } from '../utils/storage';
+import { getReports, clearDemoData, getCurrentUser } from '../utils/storage';
 import { 
   calculateRescuePerformance, 
   getFoodDisplayName, 
