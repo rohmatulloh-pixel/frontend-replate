@@ -255,7 +255,11 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
 
         <div className="divide-y divide-slate-100 overflow-x-auto">
           {reports.slice(0, 4).map((r) => (
-            <div key={r.id} className="py-3.5 flex items-center justify-between gap-4">
+            <div 
+              key={r.id} 
+              onClick={() => onNavigate('journeys', r.id)}
+              className="py-3.5 px-2.5 rounded-2xl flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-brand-500 shrink-0"></span>
                 <div>

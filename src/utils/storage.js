@@ -56,23 +56,35 @@ export function saveReport(report) {
     // Ensure foodSafetyGate information is present and properly evaluated
     const gateResult = report.foodSafetyGate || evaluateFoodSafetyGate(report);
 
+    // Build base events
+    const defaultEvents = [
+      {
+        status: 'REPORTED',
+        timestamp: new Date().toISOString(),
+        note: `Surplus recorded: ${report.quantity} ${report.unit} ${report.foodName || 'Food'}`
+      },
+      {
+        status: 'SAFETY_SCREENED',
+        timestamp: new Date().toISOString(),
+        note: `Food Safety Gate: ${gateResult.status} — ${gateResult.headline}`
+      }
+    ];
+
+    if (report.selectedDestination) {
+      defaultEvents.push({
+        status: 'MATCHED',
+        timestamp: new Date().toISOString(),
+        note: `Penyaluran disetujui ke: ${report.selectedDestination.name} (${report.selectedDestination.type})`
+      });
+    }
+
     const newReport = {
       ...report,
       id: report.id || `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       createdAt: report.createdAt || new Date().toISOString(),
       foodSafetyGate: gateResult,
-      journeyEvents: report.journeyEvents || [
-        {
-          status: 'REPORTED',
-          timestamp: new Date().toISOString(),
-          note: `Surplus recorded: ${report.quantity} ${report.unit} ${report.foodName || 'Food'}`
-        },
-        {
-          status: 'SAFETY_SCREENED',
-          timestamp: new Date().toISOString(),
-          note: `Food Safety Gate: ${gateResult.status} — ${gateResult.headline}`
-        }
-      ]
+      journeyStatus: report.journeyStatus || (report.selectedDestination ? 'MATCHED' : 'REPORTED'),
+      journeyEvents: report.journeyEvents || defaultEvents
     };
 
     const updated = [newReport, ...reports];

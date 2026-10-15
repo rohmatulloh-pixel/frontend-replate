@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { getReports, updateJourneyStatus, deleteReport, loadDemoData, getCurrentUser } from '../utils/storage';
 import { getFoodDisplayName } from '../utils/calculations';
@@ -7,9 +7,10 @@ import EmptyState from '../components/EmptyState';
 import Button from '../components/Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
-export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
+export default function Journey({ onNavigate, lang = getActiveLanguage(), initialSelectedId = null }) {
   const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
   const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+  const timelineRef = useRef(null);
 
   useEffect(() => {
     setCurrentLang(lang);
@@ -30,8 +31,9 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
   const isId = currentLang === 'id';
 
   const [reports, setReports] = useState(() => getReports());
-  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'COMPLETED'
+  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   const [selectedReportId, setSelectedReportId] = useState(() => {
+    if (initialSelectedId) return initialSelectedId;
     const initial = getReports();
     return initial.length > 0 ? initial[0].id : null;
   });
@@ -46,6 +48,23 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
     window.addEventListener('replate:storage-update', refreshReports);
     return () => window.removeEventListener('replate:storage-update', refreshReports);
   }, []);
+
+  // Sync when initialSelectedId is passed from external view
+  useEffect(() => {
+    if (initialSelectedId) {
+      setSelectedReportId(initialSelectedId);
+      const rep = getReports().find(r => r.id === initialSelectedId);
+      if (rep) {
+        if (rep.journeyStatus === 'RECEIVED') {
+          setActiveFilter('COMPLETED');
+        } else if (rep.journeyStatus === 'CANCELLED' || rep.journeyStatus === 'EXPIRED') {
+          setActiveFilter('CANCELLED');
+        } else {
+          setActiveFilter('ALL');
+        }
+      }
+    }
+  }, [initialSelectedId]);
 
   const handleAdvance = (id, newStatus, note, extraPayload) => {
     updateJourneyStatus(id, newStatus, note, extraPayload);
@@ -74,7 +93,28 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
     return true;
   });
 
-  const activeReport = reports.find(r => r.id === selectedReportId) || filteredReports[0] || null;
+  // Ensure activeReport prioritizes the item in filtered list, fallback to first in filter
+  const activeReport = filteredReports.find(r => r.id === selectedReportId) || filteredReports[0] || null;
+
+  const handleSelectReport = (id) => {
+    setSelectedReportId(id);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024 && timelineRef.current) {
+      timelineRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleFilterChange = (filterId) => {
+    setActiveFilter(filterId);
+    const newFiltered = reports.filter(r => {
+      if (filterId === 'ACTIVE') return r.journeyStatus !== 'RECEIVED' && r.journeyStatus !== 'CANCELLED' && r.journeyStatus !== 'EXPIRED';
+      if (filterId === 'COMPLETED') return r.journeyStatus === 'RECEIVED';
+      if (filterId === 'CANCELLED') return r.journeyStatus === 'CANCELLED' || r.journeyStatus === 'EXPIRED';
+      return true;
+    });
+    if (newFiltered.length > 0 && !newFiltered.some(r => r.id === selectedReportId)) {
+      setSelectedReportId(newFiltered[0].id);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
@@ -167,7 +207,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
                 return (
                   <button
                     key={filter.id}
-                    onClick={() => setActiveFilter(filter.id)}
+                    onClick={() => handleFilterChange(filter.id)}
                     className={`whitespace-nowrap h-8 px-4 rounded-full uppercase border-2 inline-flex items-center justify-center text-xs font-display transition-all shrink-0 ${
                       isSelected
                         ? 'bg-brand-500 text-white font-black border-brand-600 shadow-sm'
@@ -190,7 +230,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
                 return (
                   <div
                     key={rep.id}
-                    onClick={() => setSelectedReportId(rep.id)}
+                    onClick={() => handleSelectReport(rep.id)}
                     className={`p-4 rounded-3xl border-2 transition-all cursor-pointer relative ${
                       isSelected
                         ? 'bg-teal-50/70 border-brand-500 ring-2 ring-brand-400/20 shadow-card'
@@ -264,7 +304,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage() }) {
           </div>
 
           {/* Right Column: Active Journey Detail Timeline */}
-          <div className="lg:col-span-7">
+          <div ref={timelineRef} className="lg:col-span-7">
             {activeReport ? (
               <JourneyTimeline
                 report={activeReport}

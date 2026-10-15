@@ -3,21 +3,16 @@ import {
   Scale, 
   Clock, 
   CheckCircle2, 
-  AlertCircle, 
   AlertTriangle,
   ArrowRight, 
   ChevronDown, 
   ChevronUp, 
   Info, 
-  ShieldCheck, 
   HelpCircle, 
-  Coins, 
   TrendingUp,
-  RefreshCw,
-  ExternalLink,
   Trash2
 } from 'lucide-react';
-import { getReports, clearAllData, loadDemoData, clearDemoData, getCurrentUser } from '../utils/storage';
+import { getReports, loadDemoData, clearDemoData, getCurrentUser } from '../utils/storage';
 import { 
   calculateRescuePerformance, 
   getFoodDisplayName, 
@@ -29,7 +24,6 @@ import {
   formatDuration, 
   formatNumber, 
   formatDate, 
-  formatTime, 
   getJourneyStatusMeta 
 } from '../utils/formatters';
 import EmptyState from '../components/EmptyState';
@@ -83,11 +77,6 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
       clearDemoData();
       setReports(getReports());
     }
-  };
-
-  const handleLoadDemo = () => {
-    loadDemoData();
-    setReports(getReports());
   };
 
   // Filtered reports for Master Audit Table
@@ -693,7 +682,7 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
                           <td className="py-3.5 text-right">
                             <button
                               type="button"
-                              onClick={() => onNavigate('journeys')}
+                              onClick={() => onNavigate('journeys', rep.id)}
                               className="text-xs font-display font-bold text-[#0a5c56] hover:underline inline-flex items-center gap-1"
                             >
                               <span>Detail</span>

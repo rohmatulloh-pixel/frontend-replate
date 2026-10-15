@@ -196,7 +196,7 @@ export default function MitraDashboard({ onNavigate, lang = 'id', currentUser })
             {incomingDeliveries.slice(0, 3).map((item) => (
               <div
                 key={item.id}
-                onClick={() => onNavigate('journeys')}
+                onClick={() => onNavigate('journeys', item.id)}
                 className="bg-white rounded-3xl p-5 border border-slate-100 hover:border-brand-300 shadow-soft hover:shadow-card transition-all cursor-pointer space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">

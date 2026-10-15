@@ -45,6 +45,8 @@ export default function App() {
     };
   }, []);
 
+  const [selectedJourneyId, setSelectedJourneyId] = useState(null);
+
   // Handle surplus submission from ReportSurplus
   const handleSurplusSubmitted = (reportPayload) => {
     setPendingReport(reportPayload);
@@ -54,15 +56,21 @@ export default function App() {
 
   // Handle destination selection from Assessment
   const handleDestinationSelected = (fullReportWithDestination) => {
-    saveReport(fullReportWithDestination);
+    const saved = saveReport(fullReportWithDestination);
     setPendingReport(null);
+    if (saved?.id) {
+      setSelectedJourneyId(saved.id);
+    }
     setActivePage('journeys');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Handle navigation
-  const navigateTo = (pageId) => {
+  const navigateTo = (pageId, journeyId = null) => {
     setActivePage(pageId);
+    if (journeyId) {
+      setSelectedJourneyId(journeyId);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -105,7 +113,7 @@ export default function App() {
         )}
 
         {activePage === 'journeys' && (
-          <Journey onNavigate={navigateTo} lang={lang} />
+          <Journey onNavigate={navigateTo} lang={lang} initialSelectedId={selectedJourneyId} />
         )}
 
         {activePage === 'impact' && (

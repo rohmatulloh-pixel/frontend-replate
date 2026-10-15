@@ -14,7 +14,7 @@ import { DEMO_USERS, loginUser } from '../utils/storage';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 import Button from './Button';
 
-export default function LoginModal({ isOpen, onClose, lang = getActiveLanguage() }) {
+export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiveLanguage() }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,6 +46,9 @@ export default function LoginModal({ isOpen, onClose, lang = getActiveLanguage()
     const result = loginUser(identifier, password);
     if (result.success) {
       setError('');
+      if (onSuccess) {
+        onSuccess();
+      }
       onClose();
     } else {
       setError(result.message || (isId ? 'Username atau kata sandi tidak sesuai.' : 'Invalid credentials.'));

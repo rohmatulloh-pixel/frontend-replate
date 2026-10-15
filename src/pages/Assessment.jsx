@@ -10,7 +10,7 @@ import ScoreBreakdown from '../components/ScoreBreakdown';
 import MatchCard from '../components/MatchCard';
 import { RouteBadge } from '../components/StatusBadge';
 import Button from '../components/Button';
-import { ShieldCheck, AlertTriangle, ShieldAlert, AlertCircle, RefreshCw, ArrowLeft, Check } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Assessment({

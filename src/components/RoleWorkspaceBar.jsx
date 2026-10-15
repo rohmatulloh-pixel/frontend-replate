@@ -10,6 +10,16 @@ export default function RoleWorkspaceBar({ currentUser, onNavigate, lang = 'id' 
     const targetUser = DEMO_USERS[roleKey];
     if (targetUser) {
       loginUser(targetUser.username, targetUser.password);
+      if (onNavigate) {
+        onNavigate('home');
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    if (onNavigate) {
+      onNavigate('home');
     }
   };
 
@@ -74,7 +84,7 @@ export default function RoleWorkspaceBar({ currentUser, onNavigate, lang = 'id' 
 
           <button
             type="button"
-            onClick={() => logoutUser()}
+            onClick={handleLogout}
             className="px-2.5 py-1 rounded-xl text-xs font-display font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors ml-1"
             title="Keluar dari sesi ini"
           >

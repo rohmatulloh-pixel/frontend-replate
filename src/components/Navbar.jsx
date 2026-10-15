@@ -302,6 +302,7 @@ export default function Navbar({ activePage, onNavigate }) {
                     onClick={() => {
                       setProfileDropdownOpen(false);
                       logoutUser();
+                      handleNavClick('home');
                     }}
                     className="w-full text-left px-3 py-2 rounded-xl text-xs font-display font-bold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2"
                   >
@@ -417,6 +418,7 @@ export default function Navbar({ activePage, onNavigate }) {
                     onClick={() => {
                       setMobileMenuOpen(false);
                       logoutUser();
+                      handleNavClick('home');
                     }}
                     className="py-1.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-center hover:bg-rose-100 flex items-center justify-center gap-1 shadow-2xs"
                   >
@@ -459,6 +461,7 @@ export default function Navbar({ activePage, onNavigate }) {
       <LoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
+        onSuccess={() => handleNavClick('home')}
         lang={lang}
       />
     </header>

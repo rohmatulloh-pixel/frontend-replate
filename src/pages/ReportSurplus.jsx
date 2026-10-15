@@ -2,13 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, 
   AlertCircle, 
-  Clock, 
   Thermometer, 
-  Box, 
-  CheckCircle2, 
-  AlertTriangle,
-  Sparkles,
-  ChevronDown,
+  ChevronDown, 
   ChevronUp
 } from 'lucide-react';
 import { 
@@ -670,7 +665,6 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
             rows="2"
             value={formData.notes}
             onChange={(e) => {
-              setUserEditedNotes(true);
               setFormData({ ...formData, notes: e.target.value });
             }}
             placeholder={t.report.f6Placeholder}

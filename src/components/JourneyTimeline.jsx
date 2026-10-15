@@ -273,8 +273,8 @@ export default function JourneyTimeline({
                 ? (currentUser?.role === 'mitra'
                     ? (lang === 'id' ? 'Konfirmasi Pangan Tiba & Diterima (Mitra) ✅' : 'Confirm Delivery Intake & Received (Mitra) ✅')
                     : (lang === 'id' ? 'Konfirmasi Diterima & Terselamatkan 🎉' : 'Confirm Received & Rescued 🎉'))
-                : (currentUser?.role === 'supplier' && currentStatus === 'REPORTED'
-                    ? (lang === 'id' ? 'Serahkan ke Kurir / Mulai Penyelamatan 🚚' : 'Handover to Logistics 🚚')
+                : (currentUser?.role === 'supplier' && (currentStatus === 'REPORTED' || currentStatus === 'MATCHED')
+                    ? (lang === 'id' ? 'Serahkan ke Kurir / Mulai Penjemputan 🚚' : 'Handover to Logistics 🚚')
                     : (lang === 'id' ? 'Perbarui Status Pengiriman →' : 'Advance Status →'))}
             </Button>
           )}
