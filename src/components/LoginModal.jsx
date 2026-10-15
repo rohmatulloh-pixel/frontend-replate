@@ -18,7 +18,6 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [showManualForm, setShowManualForm] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -78,11 +77,11 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn overflow-y-auto"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl border border-slate-100 max-w-sm sm:max-w-md w-full p-4 sm:p-6 shadow-2xl relative space-y-3.5 my-auto"
+        className="bg-white rounded-3xl border border-slate-100 max-w-sm sm:max-w-md w-full p-5 sm:p-6 shadow-2xl relative space-y-3.5 max-h-[92vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -98,7 +97,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
         </button>
 
         {/* Header: Compact Inline Brand */}
-        <div className="text-center space-y-1 pt-0.5">
+        <div className="text-center space-y-1">
           <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-500 to-sky-400 text-white flex items-center justify-center text-lg mx-auto shadow-sm shadow-brand-500/20">
             🍲
           </div>
@@ -106,130 +105,115 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
             {t.auth.loginTitle}
           </h2>
           <p className="text-[11px] font-sans text-slate-500 max-w-xs mx-auto leading-tight">
-            {isId ? 'Pilih peran untuk langsung masuk atau gunakan akun manual:' : 'Select a role for instant 1-tap entry:'}
+            {isId ? 'Masuk ke dashboard akun Anda atau pilih akses instan:' : 'Sign in to your dashboard or select instant access:'}
           </p>
         </div>
 
         {/* 1-Tap Quick Login Buttons (Instant Entry - No Typing & No Scrolling) */}
-        <div className="space-y-1.5 pt-0.5">
-          <span className="block text-[10px] font-display font-extrabold uppercase tracking-wider text-slate-400 text-center">
-            {isId ? '⚡ Masuk Instan (1-Ketukan)' : '⚡ 1-Tap Instant Entry'}
-          </span>
+        <div className="space-y-1">
           <div className="grid grid-cols-3 gap-1.5">
             {[
-              { key: 'admin', icon: '👑', label: 'Admin', color: 'hover:border-purple-300 hover:bg-purple-50/50' },
-              { key: 'supplier', icon: '🏪', label: 'Supplier', color: 'hover:border-amber-300 hover:bg-amber-50/50' },
-              { key: 'mitra', icon: '🤝', label: 'Mitra', color: 'hover:border-emerald-300 hover:bg-emerald-50/50' },
+              { key: 'admin', icon: '👑', label: 'Admin', color: 'hover:border-purple-300 hover:bg-purple-50/60 text-purple-900' },
+              { key: 'supplier', icon: '🏪', label: 'Supplier', color: 'hover:border-amber-300 hover:bg-amber-50/60 text-amber-900' },
+              { key: 'mitra', icon: '🤝', label: 'Mitra', color: 'hover:border-emerald-300 hover:bg-emerald-50/60 text-emerald-900' },
             ].map((p) => (
               <button
                 key={p.key}
                 type="button"
                 onClick={() => handleQuickLogin(p.key)}
-                className={`py-2 px-2 rounded-2xl border-2 border-slate-200 bg-slate-50/80 text-center transition-all flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-2xs group ${p.color}`}
+                className={`py-1.5 px-2 rounded-xl border border-slate-200 bg-slate-50/90 text-center transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs group ${p.color}`}
+                title={`Login sebagai ${p.label}`}
               >
-                <span className="text-base group-hover:scale-110 transition-transform">{p.icon}</span>
-                <span className="text-xs font-display font-black text-slate-800 group-hover:text-brand-900">{p.label}</span>
-                <span className="text-[9px] font-display font-extrabold text-brand-600 block leading-none">
-                  {isId ? 'Masuk →' : 'Enter →'}
-                </span>
+                <span className="text-sm group-hover:scale-110 transition-transform">{p.icon}</span>
+                <span className="text-xs font-display font-black">{p.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Divider / Toggle for Custom Manual Credentials */}
-        <div className="pt-1">
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <button
-              type="button"
-              onClick={() => setShowManualForm(!showManualForm)}
-              className="flex-shrink mx-2 text-[10px] font-display font-bold text-slate-500 hover:text-brand-700 bg-white px-2 rounded-full border border-slate-200 hover:border-brand-300 transition-colors"
-            >
-              {showManualForm 
-                ? (isId ? 'Tutup Input Manual ✕' : 'Close Manual Form ✕') 
-                : (isId ? 'Atau Masuk dengan Username ▾' : 'Or Manual Username ▾')}
-            </button>
-            <div className="flex-grow border-t border-slate-200"></div>
-          </div>
+        {/* Divider */}
+        <div className="relative flex items-center py-0.5">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="flex-shrink mx-2 text-[10px] font-display font-extrabold uppercase tracking-wider text-slate-400">
+            {isId ? 'atau masuk manual' : 'or manual login'}
+          </span>
+          <div className="flex-grow border-t border-slate-200"></div>
         </div>
 
-        {/* Manual Credentials Form (Shown on demand or fits cleanly) */}
-        {showManualForm && (
-          <form onSubmit={handleSubmit} className="space-y-2.5 pt-0.5 animate-fadeIn">
-            {/* Identifier Input */}
-            <div className="space-y-0.5">
-              <label className="block text-[10px] font-display font-extrabold uppercase tracking-wider text-slate-700">
-                {t.auth.usernameLabel}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-                  <User className="w-3.5 h-3.5" />
-                </div>
-                <input
-                  type="text"
-                  value={identifier}
-                  onChange={(e) => {
-                    setIdentifier(e.target.value);
-                    setError('');
-                  }}
-                  placeholder={t.auth.usernamePlaceholder}
-                  className="w-full pl-8 pr-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-sans font-semibold focus:outline-none focus:border-brand-500 focus:bg-white transition-all"
-                />
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-2.5">
+          {/* Identifier Input */}
+          <div className="space-y-1">
+            <label className="block text-[10px] font-display font-extrabold uppercase tracking-wider text-slate-700">
+              {t.auth.usernameLabel}
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                <User className="w-3.5 h-3.5" />
               </div>
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setError('');
+                }}
+                placeholder={t.auth.usernamePlaceholder}
+                className="w-full pl-8 pr-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-sans font-semibold focus:outline-none focus:border-brand-500 focus:bg-white transition-all"
+              />
             </div>
+          </div>
 
-            {/* Password Input */}
-            <div className="space-y-0.5">
-              <label className="block text-[10px] font-display font-extrabold uppercase tracking-wider text-slate-700">
-                {t.auth.passwordLabel}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-3.5 h-3.5" />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError('');
-                  }}
-                  placeholder={t.auth.passwordPlaceholder}
-                  className="w-full pl-8 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-sans font-semibold focus:outline-none focus:border-brand-500 focus:bg-white transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
+          {/* Password Input */}
+          <div className="space-y-1">
+            <label className="block text-[10px] font-display font-extrabold uppercase tracking-wider text-slate-700">
+              {t.auth.passwordLabel}
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-3.5 h-3.5" />
               </div>
-            </div>
-
-            {/* Error Banner */}
-            {error && (
-              <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-sans font-semibold flex items-center gap-1.5 animate-fadeIn">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Submit CTA */}
-            <div className="pt-0.5">
-              <Button
-                type="submit"
-                variant="sun"
-                size="sm"
-                className="w-full text-xs font-display font-black py-2.5 shadow-sun"
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                placeholder={t.auth.passwordPlaceholder}
+                className="w-full pl-8 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-sans font-semibold focus:outline-none focus:border-brand-500 focus:bg-white transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+                aria-label="Toggle password visibility"
               >
-                {t.auth.submitBtn}
-              </Button>
+                {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </div>
-          </form>
-        )}
+          </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-sans font-semibold flex items-center gap-1.5 animate-fadeIn">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Submit CTA */}
+          <div className="pt-0.5">
+            <Button
+              type="submit"
+              variant="sun"
+              size="sm"
+              className="w-full text-xs font-display font-black py-2.5 shadow-sun"
+            >
+              {t.auth.submitBtn}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
