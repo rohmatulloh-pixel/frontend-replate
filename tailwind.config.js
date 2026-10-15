@@ -66,6 +66,24 @@ export default {
         'card': '0 10px 25px -3px rgba(15, 118, 110, 0.08), 0 4px 10px -2px rgba(15, 118, 110, 0.04)',
         'pill': '0 2px 10px rgba(0, 168, 150, 0.15)',
         'sun': '0 4px 14px rgba(251, 192, 45, 0.35)',
+      },
+      transitionTimingFunction: {
+        'spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'snappy': 'cubic-bezier(0.25, 1, 0.5, 1)',
+      },
+      animation: {
+        'fadeIn': 'fadeIn 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'scaleUp': 'scaleUp 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translate3d(0, 6px, 0)' },
+          '100%': { opacity: '1', transform: 'translate3d(0, 0, 0)' },
+        },
+        scaleUp: {
+          '0%': { opacity: '0', transform: 'scale3d(0.96, 0.96, 1)' },
+          '100%': { opacity: '1', transform: 'scale3d(1, 1, 1)' },
+        }
       }
     },
   },

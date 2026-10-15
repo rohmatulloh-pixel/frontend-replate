@@ -11,7 +11,7 @@ export default function Button({
   icon: Icon = null,
   iconPosition = 'left'
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-bold font-display rounded-full transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-teal-200 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-95';
+  const baseStyles = 'inline-flex items-center justify-center font-bold font-display rounded-full transition-all duration-150 ease-spring transform-gpu will-change-transform touch-fast focus:outline-none focus:ring-4 focus:ring-teal-200 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-95';
 
   const variants = {
     // Vibrant Teal (like WonderLearn's "Join Now")

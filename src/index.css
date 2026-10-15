@@ -7,10 +7,19 @@
     color-scheme: light;
   }
   
+  *, *::before, *::after {
+    /* Minimize subpixel jitter on high-DPI & 120Hz panels */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   html {
     scroll-behavior: smooth;
     background-color: #F0F9FF;
     color: #1E293B;
+    /* Native momentum scrolling for iOS and Android high refresh displays */
+    -webkit-overflow-scrolling: touch;
+    text-rendering: optimizeLegibility;
   }
 
   body {
@@ -21,6 +30,10 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    /* Promote root container to GPU hardware layer to prevent frame drops */
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
   }
 
   h1, h2, h3, h4, .font-display {
@@ -34,6 +47,21 @@
 }
 
 @layer utilities {
+  /* 120 FPS High-Refresh Timing Engine */
+  .transition-120hz {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-duration: 180ms;
+  }
+
+  .gpu-accelerated {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+
+  .touch-fast {
+    touch-action: manipulation;
+  }
   .bg-hero-sky {
     background: linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 55%, #F0F9FF 100%);
   }
