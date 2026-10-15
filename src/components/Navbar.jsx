@@ -99,15 +99,46 @@ export default function Navbar({ activePage, onNavigate }) {
     setDemoActive(false);
   };
 
-  // 6 Core Navigation Pages
-  const navLinks = [
-    { id: 'home', label: t.nav.home },
-    { id: 'report', label: t.nav.report },
-    { id: 'journeys', label: t.nav.journeys, badge: activeCount > 0 ? activeCount : null },
-    { id: 'impact', label: t.nav.impact },
-    { id: 'insights', label: t.nav.insights },
-    { id: 'learn', label: t.nav.learn },
-  ];
+  // Dynamic Navigation Links based on active User Role
+  const isId = lang === 'id';
+  const navLinks = (() => {
+    if (currentUser?.role === 'supplier') {
+      return [
+        { id: 'home', label: isId ? 'Beranda Dapur' : 'Kitchen Hub' },
+        { id: 'report', label: isId ? 'Lapor Surplus' : 'Log Surplus' },
+        { id: 'journeys', label: isId ? 'Penyaluran Makanan' : 'Outbound Dispatch', badge: activeCount > 0 ? activeCount : null },
+        { id: 'impact', label: isId ? 'Dampak Katering' : 'Kitchen Impact' },
+        { id: 'learn', label: isId ? 'SOP Sanitasi' : 'Kitchen SOP' },
+      ];
+    }
+    if (currentUser?.role === 'mitra') {
+      return [
+        { id: 'home', label: isId ? 'Beranda Mitra' : 'Receiver Hub' },
+        { id: 'journeys', label: isId ? 'Pasokan Masuk' : 'Inbound Intake', badge: activeCount > 0 ? activeCount : null },
+        { id: 'impact', label: isId ? 'Dampak Bantuan' : 'Distribution Impact' },
+        { id: 'report', label: isId ? 'Redistribusi Darurat' : 'Emergency Transfer' },
+        { id: 'learn', label: isId ? 'Standar Kelayakan' : 'Intake Standards' },
+      ];
+    }
+    if (currentUser?.role === 'admin') {
+      return [
+        { id: 'home', label: isId ? 'Control Room' : 'Control Room' },
+        { id: 'journeys', label: isId ? 'Monitoring Logistik' : 'Fleet Monitor', badge: activeCount > 0 ? activeCount : null },
+        { id: 'report', label: isId ? 'Lapor Surplus' : 'Report Surplus' },
+        { id: 'impact', label: isId ? 'Analitik Kinerja' : 'City Impact' },
+        { id: 'insights', label: isId ? 'Pusat Simulasi' : 'Simulator' },
+        { id: 'learn', label: isId ? 'Metodologi' : 'Methodology' },
+      ];
+    }
+    return [
+      { id: 'home', label: t.nav.home },
+      { id: 'report', label: t.nav.report },
+      { id: 'journeys', label: t.nav.journeys, badge: activeCount > 0 ? activeCount : null },
+      { id: 'impact', label: t.nav.impact },
+      { id: 'insights', label: t.nav.insights },
+      { id: 'learn', label: t.nav.learn },
+    ];
+  })();
 
   const handleNavClick = (pageId) => {
     onNavigate(pageId);
