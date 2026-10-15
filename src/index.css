@@ -30,10 +30,6 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    /* Promote root container to GPU hardware layer to prevent frame drops */
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    perspective: 1000px;
   }
 
   h1, h2, h3, h4, .font-display {
