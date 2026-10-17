@@ -34,6 +34,19 @@ const dispatchStorageEvent = () => {
 };
 
 /**
+ * Detect real client browser vs Node.js test environment (which may mock window)
+ */
+function isRealBrowserEnvironment() {
+  if (typeof window === 'undefined' || typeof window.document === 'undefined' || typeof window.location === 'undefined') {
+    return false;
+  }
+  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Backward-compatible migration from legacy storage key.
  * Safely partitions legacy reports into isolated user and demo stores,
  * preserving all user-created records and evaluating missing safety gates.
@@ -215,8 +228,8 @@ export function saveReport(report) {
     localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(updated));
     dispatchStorageEvent();
 
-    // Async sync to Supabase Cloud in background
-    if (typeof window !== 'undefined') {
+    // Async sync to Supabase Cloud in background (real browser only)
+    if (isRealBrowserEnvironment()) {
       syncReportToSupabase(newReport).catch(() => {});
     }
 
@@ -244,8 +257,8 @@ export function updateReport(id, updates) {
       localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
       dispatchStorageEvent();
 
-      // Async sync to Supabase Cloud in background
-      if (typeof window !== 'undefined') {
+      // Async sync to Supabase Cloud in background (real browser only)
+      if (isRealBrowserEnvironment()) {
         syncReportToSupabase(userReports[uIdx]).catch(() => {});
       }
 
@@ -409,7 +422,7 @@ export function deleteReport(id) {
       localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(uFiltered));
       dispatchStorageEvent();
 
-      if (typeof window !== 'undefined') {
+      if (isRealBrowserEnvironment()) {
         deleteReportFromSupabase(id).catch(() => {});
       }
 
@@ -1032,8 +1045,8 @@ export function saveEmergencyRequest(requestData) {
   localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(updated));
   dispatchStorageEvent();
 
-  // Async sync to Supabase Cloud in background
-  if (typeof window !== 'undefined') {
+  // Async sync to Supabase Cloud in background (real browser only)
+  if (isRealBrowserEnvironment()) {
     syncEmergencyRequestToSupabase(newRequest).catch(() => {});
   }
 
@@ -1058,8 +1071,8 @@ export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
   localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(existing));
   dispatchStorageEvent();
 
-  // Async sync to Supabase Cloud in background
-  if (typeof window !== 'undefined') {
+  // Async sync to Supabase Cloud in background (real browser only)
+  if (isRealBrowserEnvironment()) {
     syncEmergencyRequestToSupabase(existing[idx]).catch(() => {});
   }
 
@@ -1150,7 +1163,7 @@ export function allocateSurplusToEmergencyRequest(requestId, reportId, recipient
  * and attaches Realtime WebSocket listeners.
  */
 export async function initSupabaseCloudSync() {
-  if (typeof window === 'undefined') return () => {};
+  if (!isRealBrowserEnvironment()) return () => {};
 
   try {
     // 1. Fetch remote surplus reports and merge with local user reports
