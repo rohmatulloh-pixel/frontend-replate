@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import RoleWorkspaceBar from './components/RoleWorkspaceBar';
 import Home from './pages/Home';
 import SupplierDashboard from './components/portals/SupplierDashboard';
 import MitraDashboard from './components/portals/MitraDashboard';
@@ -121,9 +120,6 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-[#F0F9FF] selection:bg-teal-200 selection:text-teal-950 text-slate-800 font-sans">
       {/* Main Floating Rounded Navbar with Language Switcher */}
       <Navbar activePage={activePage} onNavigate={navigateTo} />
-
-      {/* Role Dedicated Workspace Bar when logged in */}
-      <RoleWorkspaceBar currentUser={currentUser} onNavigate={navigateTo} lang={lang} />
 
       {/* Dynamic Page Content */}
       <main className="flex-1">
