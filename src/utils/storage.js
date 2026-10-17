@@ -14,7 +14,10 @@ import {
   fetchRemoteEmergencyRequests,
   setupSupabaseRealtimeSubscriptions,
   mapSupabaseRowToReport,
-  mapRowToEmergencyRequest
+  mapRowToEmergencyRequest,
+  syncUserToSupabase,
+  fetchRemoteUsers,
+  generateUUID
 } from './supabase.js';
 import api, { mapReportToBackendDto, mapBackendListingToReport } from '../services/api.js';
 
@@ -992,7 +995,7 @@ export function registerUser({ username, email, password, name, organization, ro
     const roleBadge = cleanRole === 'supplier' ? 'Penyedia Surplus' : cleanRole === 'mitra' ? 'Mitra Penerima' : 'Admin Operasional';
 
     const newUser = {
-      id: `usr-reg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: generateUUID(),
       username: cleanUsername,
       email: cleanEmail || `${cleanUsername}@replate.id`,
       password: cleanPassword,
@@ -1006,6 +1009,13 @@ export function registerUser({ username, email, password, name, organization, ro
 
     registered.push(newUser);
     localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
+
+    // Async sync to Supabase Cloud users table in background (real browser only)
+    if (isRealBrowserEnvironment()) {
+      syncUserToSupabase(newUser).catch((err) => {
+        console.warn('[REPLATE Storage] Background user sync warning:', err);
+      });
+    }
 
     // Automatically create active user session
     const sessionUser = {
@@ -1104,6 +1114,39 @@ export function loginUser(identifier, password) {
     console.error('[REPLATE Storage] Error logging in:', err);
     return { success: false, message: 'Terjadi kesalahan sistem saat masuk.' };
   }
+}
+
+/**
+ * Asynchronously log in a user with Supabase Cloud real-time check fallback
+ */
+export async function loginUserAsync(identifier, password) {
+  let res = loginUser(identifier, password);
+  if (res.success) return res;
+
+  if (isRealBrowserEnvironment()) {
+    try {
+      const remoteUsers = await fetchRemoteUsers();
+      if (remoteUsers && remoteUsers.length > 0) {
+        const local = getRegisteredUsers();
+        const localEmails = new Set(local.map(u => (u.email || '').toLowerCase()));
+        let changed = false;
+        for (const ru of remoteUsers) {
+          if (!localEmails.has((ru.email || '').toLowerCase())) {
+            local.push(ru);
+            localEmails.add((ru.email || '').toLowerCase());
+            changed = true;
+          }
+        }
+        if (changed) {
+          localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(local));
+          res = loginUser(identifier, password);
+        }
+      }
+    } catch (err) {
+      console.warn('[REPLATE Storage] Cloud login fallback error:', err);
+    }
+  }
+  return res;
 }
 
 /**
@@ -1482,7 +1525,42 @@ export async function initSupabaseCloudSync() {
       }
     })();
 
-    // 4. Setup live Realtime listener
+    // 4. Pure Supabase Cloud Registered Users Sync (Bidirectional & Idempotent)
+    (async () => {
+      try {
+        const remoteUsers = await fetchRemoteUsers().catch(() => []);
+        const localUsers = getRegisteredUsers();
+        const localEmailSet = new Set(localUsers.map(u => (u.email || '').toLowerCase()));
+        let usersChanged = false;
+
+        for (const ru of remoteUsers) {
+          const email = (ru.email || '').toLowerCase();
+          if (email && !localEmailSet.has(email)) {
+            localUsers.push(ru);
+            localEmailSet.add(email);
+            usersChanged = true;
+          }
+        }
+
+        // Upload any local registered users that are not on Supabase Cloud
+        const remoteEmailSet = new Set(remoteUsers.map(ru => (ru.email || '').toLowerCase()));
+        for (const lu of localUsers) {
+          const email = (lu.email || '').toLowerCase();
+          if (email && !remoteEmailSet.has(email)) {
+            syncUserToSupabase(lu).catch(() => {});
+          }
+        }
+
+        if (usersChanged) {
+          localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
+          dispatchStorageEvent();
+        }
+      } catch (err) {
+        console.warn('[REPLATE Storage] Background user sync error:', err);
+      }
+    })();
+
+    // 5. Setup live Realtime listener
     const cleanup = setupSupabaseRealtimeSubscriptions(
       // On remote surplus change
       (payload) => {
@@ -1530,6 +1608,39 @@ export async function initSupabaseCloudSync() {
           dispatchStorageEvent();
         } catch (err) {
           console.warn('[REPLATE Supabase Realtime] Error processing emergency event:', err);
+        }
+      },
+      // On remote user change
+      (payload) => {
+        try {
+          const { eventType, new: newRow } = payload;
+          if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
+            const localUsers = getRegisteredUsers();
+            const email = (newRow.email || '').toLowerCase();
+            const idx = localUsers.findIndex(u => (u.email || '').toLowerCase() === email || u.id === newRow.id);
+            const userObj = {
+              id: newRow.id,
+              username: (newRow.email || '').split('@')[0],
+              email: newRow.email,
+              password: newRow.password_hash?.startsWith('plain:') ? newRow.password_hash.replace('plain:', '') : (newRow.role === 'SUPPLIER' ? 'supplier123' : newRow.role === 'MITRA' ? 'mitra123' : 'admin123'),
+              name: newRow.full_name,
+              role: (newRow.role || 'supplier').toLowerCase(),
+              organization: newRow.role === 'SUPPLIER' ? 'Dapur Grand Catering' : 'Dapur Umum Mandiri',
+              avatar: newRow.role === 'SUPPLIER' ? '🏪' : newRow.role === 'MITRA' ? '🤝' : '👑',
+              badgeText: newRow.role === 'SUPPLIER' ? 'Penyedia Surplus' : newRow.role === 'MITRA' ? 'Mitra Penerima' : 'Admin Operasional',
+              createdAt: newRow.created_at
+            };
+
+            if (idx !== -1) {
+              localUsers[idx] = { ...localUsers[idx], ...userObj };
+            } else {
+              localUsers.push(userObj);
+            }
+            localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
+            dispatchStorageEvent();
+          }
+        } catch (err) {
+          console.warn('[REPLATE Supabase Realtime] Error processing user event:', err);
         }
       }
     );

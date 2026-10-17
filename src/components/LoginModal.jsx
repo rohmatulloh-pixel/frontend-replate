@@ -13,7 +13,7 @@ import {
   LogIn,
   CheckCircle2
 } from 'lucide-react';
-import { DEMO_USERS, loginUser, registerUser } from '../utils/storage';
+import { DEMO_USERS, loginUser, loginUserAsync, registerUser } from '../utils/storage';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 import Button from './Button';
 
@@ -85,14 +85,14 @@ export default function LoginModal({
     }
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!identifier.trim() || !password.trim()) {
       setError(isId ? 'Harap masukkan username dan kata sandi.' : 'Please enter username and password.');
       return;
     }
 
-    const result = loginUser(identifier, password);
+    const result = await loginUserAsync(identifier, password);
     if (result.success) {
       setError('');
       if (onSuccess) onSuccess();
