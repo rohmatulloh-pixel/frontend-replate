@@ -10,13 +10,15 @@ import {
   ArrowRight, 
   Search, 
   ShieldCheck, 
-  Info 
+  Info,
+  Trash2
 } from 'lucide-react';
 import Button from '../components/Button';
 import { 
   getEmergencyRequests, 
   saveEmergencyRequest, 
   updateEmergencyRequestStatus, 
+  deleteEmergencyRequest,
   findMatchingSurplusForRequest,
   allocateSurplusToEmergencyRequest,
   getCurrentUser
@@ -25,17 +27,17 @@ import { getFoodDisplayName } from '../utils/calculations';
 import { formatDate } from '../utils/formatters';
 
 const FOOD_CATEGORY_OPTIONS = [
-  { id: 'cooked_meals', labelId: 'Makanan Siap Santap / Nasi Kotak', labelEn: 'Ready-to-Eat Cooked Meals', icon: '🍱', descId: 'Nasi, lauk pauk matang, sup, hidangan katering' },
-  { id: 'fresh_produce', labelId: 'Sayuran & Bahan Masak Segar', labelEn: 'Fresh Vegetables & Produce', icon: '🥬', descId: 'Sayur mayur, wortel, kentang, bahan olah' },
-  { id: 'pantry_staples', labelId: 'Sembako & Beras / Bahan Pokok', labelEn: 'Dry Staples & Grains', icon: '🌾', descId: 'Beras, mie, minyak, tepung, makanan kering' },
-  { id: 'protein_meat', labelId: 'Lauk Protein / Daging / Telur / Tempe', labelEn: 'Protein & Fresh Meat/Poultry', icon: '🍗', descId: 'Ayam, telur, ikan, tahu tempe, daging olah' },
-  { id: 'bakery_snacks', labelId: 'Roti & Kudapan Bergizi', labelEn: 'Bakery & Nutritious Snacks', icon: '🍞', descId: 'Roti tawar, kue, biskuit, camilan padat nutrisi' }
+  { id: 'cooked_meals', labelId: 'Makanan Siap Santap / Nasi Kotak', labelEn: 'Ready-to-Eat Cooked Meals', icon: '🍱', descId: 'Nasi, lauk pauk matang, sup, hidangan katering', descEn: 'Cooked rice, side dishes, soup, catering meals' },
+  { id: 'fresh_produce', labelId: 'Sayuran & Bahan Masak Segar', labelEn: 'Fresh Vegetables & Produce', icon: '🥬', descId: 'Sayur mayur, wortel, kentang, bahan olah', descEn: 'Greens, carrots, potatoes, raw ingredients' },
+  { id: 'pantry_staples', labelId: 'Sembako & Beras / Bahan Pokok', labelEn: 'Dry Staples & Grains', icon: '🌾', descId: 'Beras, mie, minyak, tepung, makanan kering', descEn: 'Rice, noodles, cooking oil, flour, dry goods' },
+  { id: 'protein_meat', labelId: 'Lauk Protein / Daging / Telur / Tempe', labelEn: 'Protein & Fresh Meat/Poultry', icon: '🍗', descId: 'Ayam, telur, ikan, tahu tempe, daging olah', descEn: 'Chicken, eggs, fish, tofu, tempeh, meat' },
+  { id: 'bakery_snacks', labelId: 'Roti & Kudapan Bergizi', labelEn: 'Bakery & Nutritious Snacks', icon: '🍞', descId: 'Roti tawar, kue, biskuit, camilan padat nutrisi', descEn: 'Bread, pastries, biscuits, nutritious snacks' }
 ];
 
 const URGENCY_LEVELS = [
-  { id: 'CRITICAL', labelId: '🚨 Kritis (< 2 Jam)', labelEn: '🚨 Critical (< 2 Hours)', descId: 'Mendesak untuk makan siang/malam segera' },
-  { id: 'HIGH', labelId: '⚡ Tinggi (2 - 4 Jam)', labelEn: '⚡ High (2 - 4 Hours)', descId: 'Stok dapur menipis dalam shift berjalan' },
-  { id: 'MEDIUM', labelId: '⏳ Siaga (Hari Ini)', labelEn: '⏳ Moderate (Within Today)', descId: 'Persiapan makan untuk shift berikutnya' }
+  { id: 'CRITICAL', labelId: '🚨 Kritis (< 2 Jam)', labelEn: '🚨 Critical (< 2 Hours)', descId: 'Mendesak untuk makan siang/malam segera', descEn: 'Immediate requirement for imminent meal service' },
+  { id: 'HIGH', labelId: '⚡ Tinggi (2 - 4 Jam)', labelEn: '⚡ High (2 - 4 Hours)', descId: 'Stok dapur menipis dalam shift berjalan', descEn: 'Kitchen inventory running low in current shift' },
+  { id: 'MEDIUM', labelId: '⏳ Siaga (Hari Ini)', labelEn: '⏳ Moderate (Within Today)', descId: 'Persiapan makan untuk shift berikutnya', descEn: 'Advance meal prep for next upcoming shift' }
 ];
 
 export default function EmergencyDistribution({ onNavigate, lang = 'id', currentUser }) {
@@ -190,6 +192,18 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
     refreshRequests();
   };
 
+  // Delete emergency request permanently
+  const handleDeleteRequest = (id) => {
+    const confirmMsg = isId 
+      ? 'Apakah Anda yakin ingin menghapus permintaan darurat ini secara permanen?' 
+      : 'Are you sure you want to permanently delete this emergency request?';
+    if (!window.confirm(confirmMsg)) return;
+
+    deleteEmergencyRequest(id);
+    showNotification(isId ? 'Permintaan darurat telah berhasil dihapus.' : 'Emergency request permanently deleted.');
+    refreshRequests();
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       
@@ -212,21 +226,6 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
               ? 'Menu khusus mitra penerima untuk mengajukan kebutuhan makanan darurat saat terjadi lonjakan pengungsi, bencana alam, atau kehabisan stok dapur posko. Permintaan akan dicocokkan dengan surplus donor yang telah lolos uji Food Safety Gate.'
               : 'Submit and manage urgent food relief requests for natural disaster response, shelter overflow, or kitchen stockouts. Requests are matched against safety-verified surplus meals.'}
           </p>
-
-          {/* Local-first architecture disclaimer */}
-          <div className="p-3.5 rounded-2xl bg-white/90 border border-amber-200 text-amber-950 text-xs font-sans flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="font-display font-bold block">
-                {isId ? 'Keterbatasan Penyimpanan Lokal (Local-First Prototype)' : 'Local Storage Architecture Disclaimer'}
-              </strong>
-              <p className="mt-0.5 text-amber-900 leading-relaxed">
-                {isId
-                  ? 'Permintaan darurat tersimpan secara independen pada perangkat browser ini dan tidak tercatat sebagai listing surplus. Pada implementasi multi-instansi produksi, fitur ini memerlukan sinkronisasi backend bersama.'
-                  : 'Emergency requests are stored in your isolated local browser storage and separate from surplus listings. Live city-wide deployment requires multi-tenant shared backend synchronization.'}
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -334,7 +333,7 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                           {isId ? cat.labelId : cat.labelEn}
                         </strong>
                         <span className="block text-[11px] font-sans text-slate-500 mt-0.5">
-                          {cat.descId}
+                          {isId ? cat.descId : cat.descEn}
                         </span>
                       </div>
                     </button>
@@ -364,7 +363,7 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                     ⚖️ {isId ? 'Estimasi setara bobot: ' : 'Estimated net weight: '}
                     <strong className="text-brand-900 font-bold">
                       {(Number(formData.requestedPortions) * 0.35).toFixed(1)} kg
-                    </strong> (standar 0.35 kg/porsi)
+                    </strong> {isId ? '(standar 0.35 kg/porsi)' : '(standard 0.35 kg/portion)'}
                   </p>
                 )}
                 {errors.requestedPortions && <p className="text-xs text-rose-600 font-bold">{errors.requestedPortions}</p>}
@@ -407,7 +406,7 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                       }`}
                     >
                       <span className="block text-xs font-display">{isId ? lvl.labelId : lvl.labelEn}</span>
-                      <span className="block text-[11px] font-sans text-slate-500 mt-0.5">{lvl.descId}</span>
+                      <span className="block text-[11px] font-sans text-slate-500 mt-0.5">{isId ? lvl.descId : lvl.descEn}</span>
                     </button>
                   );
                 })}
@@ -583,7 +582,11 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                     {/* Header: Urgency & Status */}
                     <div className="flex items-start justify-between gap-2">
                       <span className="px-3 py-1 rounded-full text-[11px] font-display font-black bg-rose-50 text-rose-900 border border-rose-200">
-                        {req.urgencyLevel === 'CRITICAL' ? '🚨 KRITIS' : req.urgencyLevel === 'HIGH' ? '⚡ TINGGI' : '⏳ SIAGA'}
+                        {req.urgencyLevel === 'CRITICAL'
+                          ? (isId ? '🚨 KRITIS' : '🚨 CRITICAL')
+                          : req.urgencyLevel === 'HIGH'
+                            ? (isId ? '⚡ TINGGI' : '⚡ HIGH')
+                            : (isId ? '⏳ SIAGA' : '⏳ STANDBY')}
                       </span>
 
                       <span className={`px-3 py-1 rounded-full text-[11px] font-display font-black border ${statusBg}`}>
@@ -594,7 +597,7 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                     {/* Food Type & Portions */}
                     <div>
                       <h3 className="text-xl font-display font-black text-brand-900">
-                        {req.requestedPortions} Porsi • {req.foodTypeName || req.neededFoodType}
+                        {req.requestedPortions} {isId ? 'Porsi' : 'Portions'} • {req.foodTypeName || req.neededFoodType}
                       </h3>
                       <p className="text-xs font-sans text-slate-500 font-semibold mt-0.5">
                         {req.beneficiaryCount} {isId ? 'Penerima Manfaat' : 'Beneficiaries'} ({req.beneficiaryGroup || 'Posko'}) • ID: <span className="font-mono">{req.id}</span>
@@ -631,20 +634,31 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
                     {/* Timestamp */}
                     <div className="text-[11px] font-sans text-slate-400">
-                      {isId ? 'Dibuat pada: ' : 'Logged: '} {formatDate(req.createdAt)}
+                      {isId ? 'Dibuat pada: ' : 'Logged: '} {formatDate(req.createdAt, lang)}
                     </div>
 
                     {/* Action Buttons */}
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                       {isOpen && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleCancelRequest(req.id)}
-                            className="text-xs font-display font-bold text-rose-600 hover:underline"
-                          >
-                            ✕ {isId ? 'Batalkan' : 'Cancel'}
-                          </button>
+                        <div className="w-full flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => handleCancelRequest(req.id)}
+                              className="text-xs font-display font-bold text-rose-600 hover:underline"
+                            >
+                              ✕ {isId ? 'Batalkan' : 'Cancel'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRequest(req.id)}
+                              className="text-xs font-display font-bold text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-1"
+                              title={isId ? 'Hapus Permintaan' : 'Delete Request'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>{isId ? 'Hapus' : 'Delete'}</span>
+                            </button>
+                          </div>
 
                           <Button
                             variant="sun"
@@ -655,11 +669,11 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                           >
                             {isId ? '🔍 Cari Surplus Cocok' : '🔍 Match Surplus'}
                           </Button>
-                        </>
+                        </div>
                       )}
 
                       {isAllocated && (
-                        <div className="w-full flex items-center justify-between gap-2">
+                        <div className="w-full flex items-center justify-between gap-2 flex-wrap">
                           <button
                             type="button"
                             onClick={() => onNavigate('journeys')}
@@ -668,26 +682,60 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                             🚚 {isId ? 'Pantau di Menu Perjalanan' : 'Track in Journeys'}
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleMarkFulfilled(req.id)}
-                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-display font-black text-xs hover:bg-emerald-700 transition-colors"
-                          >
-                            ✓ {isId ? 'Tandai Terpenuhi' : 'Mark Fulfilled'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRequest(req.id)}
+                              className="px-2.5 py-1.5 rounded-xl text-slate-400 hover:text-rose-600 text-xs font-display font-bold transition-colors flex items-center gap-1"
+                              title={isId ? 'Hapus Permintaan' : 'Delete Request'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>{isId ? 'Hapus' : 'Delete'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleMarkFulfilled(req.id)}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-display font-black text-xs hover:bg-emerald-700 transition-colors"
+                            >
+                              ✓ {isId ? 'Tandai Terpenuhi' : 'Mark Fulfilled'}
+                            </button>
+                          </div>
                         </div>
                       )}
 
                       {isFulfilled && (
-                        <div className="text-xs font-display font-extrabold text-emerald-700 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{isId ? 'Kebutuhan telah selesai terpenuhi' : 'Relief fully fulfilled'}</span>
+                        <div className="w-full flex items-center justify-between gap-2">
+                          <div className="text-xs font-display font-extrabold text-emerald-700 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{isId ? 'Kebutuhan telah selesai terpenuhi' : 'Relief fully fulfilled'}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRequest(req.id)}
+                            className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-700 text-xs font-display font-bold transition-colors flex items-center gap-1 active:scale-95 border border-slate-200"
+                            title={isId ? 'Hapus Permintaan' : 'Delete Request'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{isId ? 'Hapus' : 'Delete'}</span>
+                          </button>
                         </div>
                       )}
 
                       {isCancelled && (
-                        <div className="text-xs font-display font-semibold text-rose-600">
-                          {req.cancelReason ? `Alasan: ${req.cancelReason}` : (isId ? 'Permintaan dibatalkan' : 'Request cancelled')}
+                        <div className="w-full flex items-center justify-between gap-2">
+                          <div className="text-xs font-display font-semibold text-rose-600">
+                            {req.cancelReason ? `${isId ? 'Alasan: ' : 'Reason: '}${req.cancelReason}` : (isId ? 'Permintaan dibatalkan' : 'Request cancelled')}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRequest(req.id)}
+                            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-display font-black transition-colors flex items-center gap-1 active:scale-95 border border-rose-200 shrink-0"
+                            title={isId ? 'Hapus Permintaan' : 'Delete Request'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{isId ? 'Hapus Permintaan' : 'Delete Request'}</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -713,7 +761,7 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                   {isId ? 'Surplus Tersedia untuk Permintaan Ini' : 'Available Safety-Screened Surplus'}
                 </h3>
                 <p className="text-xs font-sans text-slate-500 mt-1">
-                  Permintaan: <strong>{selectedRequestForMatching.requestedPortions} Porsi {selectedRequestForMatching.foodTypeName}</strong>
+                  {isId ? 'Permintaan:' : 'Request:'} <strong>{selectedRequestForMatching.requestedPortions} {isId ? 'Porsi' : 'Portions'} • {selectedRequestForMatching.foodTypeName}</strong>
                 </p>
               </div>
 
@@ -771,7 +819,7 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
                         </span>
                       </div>
                       <div className="text-[11px] font-sans text-slate-500 mt-0.5">
-                        {isId ? 'Dari: ' : 'From: '} <strong className="text-slate-700">{rep.reportedBy?.name || 'Dapur Grand Catering'}</strong> • Skor: {rep.rescueScore || 90}/100
+                        {isId ? 'Dari: ' : 'From: '} <strong className="text-slate-700">{rep.reportedBy?.name || 'Dapur Grand Catering'}</strong> • {isId ? 'Skor:' : 'Score:'} {rep.rescueScore || 90}/100
                       </div>
                     </div>
 

@@ -216,6 +216,29 @@ export async function deleteReportFromSupabase(id) {
 }
 
 /**
+ * Delete emergency request from Supabase Cloud
+ */
+export async function deleteEmergencyRequestFromSupabase(id) {
+  const sb = getSupabase();
+  if (!sb || !id) return false;
+  try {
+    const { error } = await sb
+      .from('emergency_requests')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.warn('[REPLATE Supabase] Error deleting emergency request:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[REPLATE Supabase] Network error deleting emergency request:', err);
+    return false;
+  }
+}
+
+/**
  * Fetch remote emergency requests from Supabase
  */
 export async function fetchRemoteEmergencyRequests() {

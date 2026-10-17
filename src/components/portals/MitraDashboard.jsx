@@ -6,9 +6,7 @@ import {
   ArrowRight, 
   ShieldCheck, 
   MapPin, 
-  PackageCheck,
-  HeartHandshake,
-  AlertTriangle
+  PackageCheck
 } from 'lucide-react';
 import Button from '../Button';
 import { getReports } from '../../utils/storage';
@@ -34,61 +32,7 @@ export default function MitraDashboard({ onNavigate, lang = 'id', currentUser })
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
       
-      {/* 1. Mitra Hero & Welcome Banner */}
-      <div className="bg-gradient-to-br from-teal-500/10 via-sky-50 to-emerald-50 rounded-3xl p-6 sm:p-10 border border-brand-200/80 shadow-card relative overflow-hidden">
-        <div className="absolute top-4 right-4 text-6xl opacity-15 select-none pointer-events-none">🤝</div>
-
-        <div className="relative z-10 max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white shadow-2xs border border-brand-300 text-xs font-display font-extrabold text-brand-900">
-            <span>🤝</span>
-            <span>{isId ? 'PORTAL MITRA PENERIMA • DAPUR UMUM MANDIRI' : 'RECIPIENT PORTAL • DAPUR UMUM MANDIRI'}</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl font-display font-black text-brand-900 tracking-tight leading-tight">
-            {isId ? 'Dasbor Penerimaan & Distribusi Pangan' : 'Inbound Food Intake & Distribution Hub'}
-          </h1>
-
-          <p className="text-sm sm:text-base font-sans font-semibold text-slate-700 leading-relaxed">
-            {isId
-              ? 'Selamat datang di panel khusus mitra penerima. Pantau pasokan makanan bergizi dari donatur katering yang sedang menuju Dapur Umum Mandiri, lakukan verifikasi fisik saat kurir tiba, dan salurkan ke warga binaan.'
-              : 'Welcome to the recipient intake portal. Track nutritious surplus meals in transit towards your kitchen, inspect physical food safety upon delivery, and distribute to beneficiaries.'}
-          </p>
-
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-3 flex-wrap">
-            <Button
-              variant="sun"
-              size="md"
-              onClick={() => onNavigate('journeys')}
-              icon={Inbox}
-              className="w-full sm:w-auto text-xs px-6 py-3 shadow-sun font-display font-black"
-            >
-              {isId ? '📥 Periksa Antrean Pasokan Masuk' : '📥 Check Inbound Queue'}
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => onNavigate('emergency')}
-              icon={AlertTriangle}
-              className="w-full sm:w-auto text-xs px-6 py-3 font-display font-extrabold bg-rose-50 hover:bg-rose-100 text-rose-900 border-rose-300"
-            >
-              {isId ? '🚨 Distribusi & Permintaan Darurat' : '🚨 Emergency Food Requisition'}
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => onNavigate('impact')}
-              icon={HeartHandshake}
-              className="w-full sm:w-auto text-xs px-6 py-3 font-display font-extrabold"
-            >
-              {isId ? '🤝 Rekap Porsi Tersalurkan' : '🤝 Distribution Stats'}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Four (4) Mitra Logistics KPI Cards */}
+      {/* 1. Four (4) Mitra Logistics KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-soft space-y-2">
           <div className="flex items-center justify-between text-slate-400">

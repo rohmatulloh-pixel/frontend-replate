@@ -240,12 +240,6 @@ export default function Navbar({ activePage, onNavigate }) {
             </span>
           </button>
 
-          {/* Cloud Live Badge (Desktop) */}
-          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black font-display bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-2xs shrink-0 select-none" title="Terhubung langsung ke Cloud Supabase & Render">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Cloud Live</span>
-          </div>
-
           {/* Auth Button / Profile Dropdown (Desktop) */}
           {!currentUser ? (
             <button
@@ -254,7 +248,7 @@ export default function Navbar({ activePage, onNavigate }) {
               className="px-4 py-1.5 rounded-full text-xs font-display font-black bg-sun-400 hover:bg-sun-500 text-amber-950 border border-sun-300 shadow-sm transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
             >
               <UserIcon className="w-3.5 h-3.5" />
-              <span>{t.auth?.loginBtn || 'Masuk'}</span>
+              <span>{t.auth?.loginBtn || (isId ? 'Masuk' : 'Sign In')}</span>
             </button>
           ) : (
             <div className="relative shrink-0" ref={profileDropdownRef}>
@@ -283,7 +277,13 @@ export default function Navbar({ activePage, onNavigate }) {
                     </div>
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-[10px] font-display font-black uppercase px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
-                        {currentUser.badgeText || currentUser.role}
+                        {currentUser.role === 'admin'
+                          ? (isId ? 'Admin Operasional' : 'Operations Admin')
+                          : currentUser.role === 'supplier'
+                            ? (isId ? 'Penyedia Surplus' : 'Surplus Provider')
+                            : currentUser.role === 'mitra'
+                              ? (isId ? 'Mitra Penerima' : 'Recipient Partner')
+                              : (currentUser.badgeText || (isId ? 'Pengguna' : 'User'))}
                       </span>
                       <span className="text-[10px] text-slate-400 font-mono">
                         @{currentUser.username}
@@ -300,7 +300,7 @@ export default function Navbar({ activePage, onNavigate }) {
                     className="w-full text-left px-3 py-2 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-slate-50 hover:text-brand-900 transition-colors flex items-center gap-2"
                   >
                     <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{t.auth?.switchRoleBtn || 'Ganti Peran'}</span>
+                    <span>{t.auth?.switchRoleBtn || (isId ? 'Ganti Peran' : 'Switch Role')}</span>
                   </button>
 
                   <button
@@ -313,7 +313,7 @@ export default function Navbar({ activePage, onNavigate }) {
                     className="w-full text-left px-3 py-2 rounded-xl text-xs font-display font-bold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2"
                   >
                     <LogOut className="w-3.5 h-3.5 text-rose-500" />
-                    <span>{t.auth?.logoutBtn || 'Keluar'}</span>
+                    <span>{t.auth?.logoutBtn || (isId ? 'Keluar' : 'Log Out')}</span>
                   </button>
                 </div>
               )}
@@ -389,7 +389,7 @@ export default function Navbar({ activePage, onNavigate }) {
                 className="w-full py-2.5 px-4 rounded-2xl text-xs font-display font-black bg-sun-400 hover:bg-sun-500 text-amber-950 border-2 border-sun-300 shadow-sun flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <span>👤</span>
-                <span>{t.auth?.loginBtn || 'Masuk / Pilih Peran Akun ✨'}</span>
+                <span>{isId ? 'Masuk / Daftar Akun ✨' : 'Sign In / Register ✨'}</span>
               </button>
             </div>
           ) : (
@@ -404,7 +404,13 @@ export default function Navbar({ activePage, onNavigate }) {
                     </div>
                   </div>
                   <span className="text-[10px] font-display font-black uppercase px-2 py-0.5 rounded-full bg-brand-500 text-white">
-                    {currentUser.role}
+                    {currentUser.role === 'admin'
+                      ? (isId ? 'Admin Operasional' : 'Operations Admin')
+                      : currentUser.role === 'supplier'
+                        ? (isId ? 'Penyedia Surplus' : 'Surplus Provider')
+                        : currentUser.role === 'mitra'
+                          ? (isId ? 'Mitra Penerima' : 'Recipient Partner')
+                          : (currentUser.badgeText || (isId ? 'Pengguna' : 'User'))}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 pt-1 border-t border-brand-100/80 text-[11px] font-display font-bold">
@@ -417,7 +423,7 @@ export default function Navbar({ activePage, onNavigate }) {
                     className="flex-1 py-1.5 px-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-center hover:bg-slate-50 flex items-center justify-center gap-1 shadow-2xs"
                   >
                     <RefreshCw className="w-3 h-3 text-slate-400" />
-                    <span>{t.auth?.switchRoleBtn || 'Ganti Peran'}</span>
+                    <span>{t.auth?.switchRoleBtn || (isId ? 'Ganti Peran' : 'Switch Role')}</span>
                   </button>
                   <button
                     type="button"
@@ -429,7 +435,7 @@ export default function Navbar({ activePage, onNavigate }) {
                     className="py-1.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-center hover:bg-rose-100 flex items-center justify-center gap-1 shadow-2xs"
                   >
                     <LogOut className="w-3 h-3 text-rose-500" />
-                    <span>{t.auth?.logoutBtn || 'Keluar'}</span>
+                    <span>{t.auth?.logoutBtn || (isId ? 'Keluar' : 'Log Out')}</span>
                   </button>
                 </div>
               </div>

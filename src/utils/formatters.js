@@ -2,11 +2,12 @@
  * REPLATE Text & Value Formatters
  */
 
-export function formatDate(isoString) {
+export function formatDate(isoString, lang = 'id') {
   if (!isoString) return '—';
   try {
     const d = new Date(isoString);
-    return d.toLocaleDateString('en-US', {
+    const locale = lang === 'en' ? 'en-US' : 'id-ID';
+    return d.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric'

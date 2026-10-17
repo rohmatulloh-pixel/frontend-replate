@@ -9,6 +9,7 @@ import {
   syncReportToSupabase,
   deleteReportFromSupabase,
   syncEmergencyRequestToSupabase,
+  deleteEmergencyRequestFromSupabase,
   fetchRemoteSurplusReports,
   fetchRemoteEmergencyRequests,
   setupSupabaseRealtimeSubscriptions,
@@ -24,6 +25,7 @@ export const STORAGE_KEYS = {
   PREFERENCES: 'replate_user_preferences_v1',
   DEMO_FLAG: 'replate_demo_loaded_v1',
   USER_SESSION: 'replate_user_session_v1',
+  REGISTERED_USERS: 'replate_registered_users_v1',
   EMERGENCY_REQUESTS: 'replate_emergency_requests_v1'
 };
 
@@ -933,6 +935,102 @@ export function getCurrentUser() {
 }
 
 /**
+ * Get registered user accounts from isolated storage
+ */
+export function getRegisteredUsers() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    console.error('[REPLATE Storage] Error reading registered users:', err);
+    return [];
+  }
+}
+
+/**
+ * Register a new user account
+ */
+export function registerUser({ username, email, password, name, organization, role = 'supplier' }) {
+  try {
+    const cleanUsername = String(username || '').trim().toLowerCase();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPassword = String(password || '').trim();
+    const cleanName = String(name || '').trim();
+    const cleanOrg = String(organization || '').trim();
+    const cleanRole = ['supplier', 'mitra', 'admin'].includes(role) ? role : 'supplier';
+
+    if (!cleanUsername || cleanUsername.length < 3) {
+      return { success: false, message: 'Username minimal 3 karakter.' };
+    }
+    if (!cleanPassword || cleanPassword.length < 4) {
+      return { success: false, message: 'Kata sandi minimal 4 karakter.' };
+    }
+    if (!cleanName) {
+      return { success: false, message: 'Nama lengkap wajib diisi.' };
+    }
+
+    // Check if username/email already taken in DEMO_USERS
+    const takenInDemo = Object.values(DEMO_USERS).some(
+      u => u.username.toLowerCase() === cleanUsername || (cleanEmail && u.email.toLowerCase() === cleanEmail)
+    );
+    if (takenInDemo) {
+      return { success: false, message: 'Username atau email ini sudah terdaftar.' };
+    }
+
+    const registered = getRegisteredUsers();
+    const takenInRegistered = registered.some(
+      u => u.username.toLowerCase() === cleanUsername || (cleanEmail && u.email?.toLowerCase() === cleanEmail)
+    );
+    if (takenInRegistered) {
+      return { success: false, message: 'Username atau email ini sudah digunakan.' };
+    }
+
+    const roleAvatar = cleanRole === 'supplier' ? '🏪' : cleanRole === 'mitra' ? '🤝' : '👑';
+    const roleBadge = cleanRole === 'supplier' ? 'Penyedia Surplus' : cleanRole === 'mitra' ? 'Mitra Penerima' : 'Admin Operasional';
+
+    const newUser = {
+      id: `usr-reg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      username: cleanUsername,
+      email: cleanEmail || `${cleanUsername}@replate.id`,
+      password: cleanPassword,
+      role: cleanRole,
+      name: cleanName,
+      organization: cleanOrg || (cleanRole === 'supplier' ? 'Dapur Katering Mandiri' : 'Posko Peduli Pangan'),
+      avatar: roleAvatar,
+      badgeText: roleBadge,
+      createdAt: new Date().toISOString()
+    };
+
+    registered.push(newUser);
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
+
+    // Automatically create active user session
+    const sessionUser = {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+      name: newUser.name,
+      organization: newUser.organization,
+      avatar: newUser.avatar,
+      badgeText: newUser.badgeText,
+      loggedInAt: new Date().toISOString()
+    };
+
+    localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
+    dispatchAuthEvent(sessionUser);
+
+    return { success: true, user: sessionUser };
+  } catch (err) {
+    console.error('[REPLATE Storage] Error registering user:', err);
+    return { success: false, message: 'Gagal mendaftarkan akun. Silakan coba lagi.' };
+  }
+}
+
+/**
  * Log in a user using username or email and password
  */
 export function loginUser(identifier, password) {
@@ -940,7 +1038,7 @@ export function loginUser(identifier, password) {
     const cleanId = String(identifier || '').trim().toLowerCase();
     const cleanPw = String(password || '').trim();
 
-    // Match against demo users
+    // 1. Match against demo users
     const matchedKey = Object.keys(DEMO_USERS).find((key) => {
       const u = DEMO_USERS[key];
       return (
@@ -949,14 +1047,23 @@ export function loginUser(identifier, password) {
       );
     });
 
-    if (!matchedKey) {
+    let matchedUser = matchedKey ? DEMO_USERS[matchedKey] : null;
+
+    // 2. If not a demo user, match against registered users
+    if (!matchedUser) {
+      const registered = getRegisteredUsers();
+      matchedUser = registered.find(
+        u => (u.username.toLowerCase() === cleanId || u.email?.toLowerCase() === cleanId) && u.password === cleanPw
+      );
+    }
+
+    if (!matchedUser) {
       return {
         success: false,
-        message: 'Username atau kata sandi tidak sesuai akun demo.'
+        message: 'Username atau kata sandi tidak sesuai.'
       };
     }
 
-    const matchedUser = DEMO_USERS[matchedKey];
     const sessionUser = {
       id: matchedUser.id,
       username: matchedUser.username,
@@ -964,8 +1071,8 @@ export function loginUser(identifier, password) {
       role: matchedUser.role,
       name: matchedUser.name,
       organization: matchedUser.organization,
-      avatar: matchedUser.avatar,
-      badgeText: matchedUser.badgeText,
+      avatar: matchedUser.avatar || (matchedUser.role === 'supplier' ? '🏪' : '🤝'),
+      badgeText: matchedUser.badgeText || (matchedUser.role === 'supplier' ? 'Penyedia Surplus' : 'Mitra Penerima'),
       loggedInAt: new Date().toISOString()
     };
 
@@ -1188,6 +1295,12 @@ export function deleteEmergencyRequest(id) {
   if (filtered.length !== existing.length) {
     localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
     dispatchStorageEvent();
+    if (isRealBrowserEnvironment()) {
+      deleteEmergencyRequestFromSupabase(id).catch(() => {});
+      if (api.isLiveApiEnabled && api.isLiveApiEnabled()) {
+        api.emergency?.delete?.(id)?.catch(() => {});
+      }
+    }
     return true;
   }
   return false;

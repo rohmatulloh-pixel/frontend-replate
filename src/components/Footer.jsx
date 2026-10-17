@@ -71,6 +71,7 @@ export default function Footer({ onNavigate }) {
               <ul className="space-y-2 text-xs font-sans text-teal-100">
                 <li>
                   <button
+                    type="button"
                     onClick={() => onNavigate('home')}
                     className="hover:text-white transition-colors"
                   >
@@ -79,6 +80,7 @@ export default function Footer({ onNavigate }) {
                 </li>
                 <li>
                   <button
+                    type="button"
                     onClick={() => onNavigate('report')}
                     className="hover:text-white transition-colors"
                   >
@@ -87,6 +89,7 @@ export default function Footer({ onNavigate }) {
                 </li>
                 <li>
                   <button
+                    type="button"
                     onClick={() => onNavigate('journeys')}
                     className="hover:text-white transition-colors"
                   >
@@ -95,6 +98,16 @@ export default function Footer({ onNavigate }) {
                 </li>
                 <li>
                   <button
+                    type="button"
+                    onClick={() => onNavigate('emergency')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {lang === 'id' ? 'Distribusi Darurat' : 'Emergency Requests'}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
                     onClick={() => onNavigate('impact')}
                     className="hover:text-white transition-colors"
                   >
@@ -103,6 +116,7 @@ export default function Footer({ onNavigate }) {
                 </li>
                 <li>
                   <button
+                    type="button"
                     onClick={() => onNavigate('insights')}
                     className="hover:text-white transition-colors"
                   >
@@ -111,6 +125,7 @@ export default function Footer({ onNavigate }) {
                 </li>
                 <li>
                   <button
+                    type="button"
                     onClick={() => onNavigate('learn')}
                     className="hover:text-white transition-colors"
                   >
