@@ -1266,51 +1266,98 @@ export async function initSupabaseCloudSync() {
   if (!isRealBrowserEnvironment()) return () => {};
 
   try {
-    // 1. Primary Cloud Sync: Fetch immediately from NestJS Backend API on Render
+    // 1. If backend API toggle is explicitly enabled, sync from Render NestJS
     if (api.isLiveApiEnabled()) {
       syncBackendSurplusToLocal().catch(() => {});
     }
 
-    // 2. Secondary/legacy Supabase table check in non-blocking background task
+    // 2. Pure Supabase Cloud Surplus Sync (Bidirectional & Idempotent)
     (async () => {
       try {
         const remoteReports = await fetchRemoteSurplusReports().catch(() => []);
-        if (remoteReports && remoteReports.length > 0) {
-          const localUsers = getUserReports();
-          const reportMap = new Map();
-          for (const r of remoteReports) reportMap.set(r.id, r);
-          for (const l of localUsers) {
-            const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id?.startsWith(prefix));
-            if (isTestId) continue;
-            const existing = reportMap.get(l.id);
-            if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
-              reportMap.set(l.id, l);
+        const localUsers = getUserReports();
+        const remoteMap = new Map();
+        for (const r of (remoteReports || [])) {
+          if (r?.id) remoteMap.set(r.id, r);
+        }
+
+        let localChanged = false;
+        // Merge remote items into local
+        for (const r of (remoteReports || [])) {
+          const lIdx = localUsers.findIndex(l => l.id === r.id);
+          if (lIdx === -1) {
+            localUsers.unshift(r);
+            localChanged = true;
+          } else {
+            const remoteTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
+            const localTime = new Date(localUsers[lIdx].updatedAt || localUsers[lIdx].createdAt || 0).getTime();
+            if (remoteTime > localTime) {
+              localUsers[lIdx] = r;
+              localChanged = true;
             }
           }
-          localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(Array.from(reportMap.values())));
+        }
+
+        // Upload any local reports that are not yet on Supabase Cloud
+        for (const l of localUsers) {
+          const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id?.startsWith(prefix));
+          if (isTestId || l.isDemo) continue;
+          if (!remoteMap.has(l.id)) {
+            syncReportToSupabase(l).catch(() => {});
+          }
+        }
+
+        if (localChanged) {
+          localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(localUsers));
           dispatchStorageEvent();
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[REPLATE Storage] Background surplus sync error:', err);
+      }
     })();
 
-    // 3. Fetch remote emergency requests and merge in non-blocking background task
+    // 3. Pure Supabase Cloud Emergency Requests Sync (Bidirectional & Idempotent)
     (async () => {
       try {
         const remoteRequests = await fetchRemoteEmergencyRequests().catch(() => []);
-        if (remoteRequests && remoteRequests.length > 0) {
-          const localReqs = getEmergencyRequests();
-          const reqMap = new Map();
-          for (const req of remoteRequests) reqMap.set(req.id, req);
-          for (const l of localReqs) {
-            const existing = reqMap.get(l.id);
-            if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
-              reqMap.set(l.id, l);
+        const localReqs = getEmergencyRequests();
+        const remoteReqMap = new Map();
+        for (const req of (remoteRequests || [])) {
+          if (req?.id) remoteReqMap.set(req.id, req);
+        }
+
+        let reqsChanged = false;
+        // Merge remote requests into local
+        for (const req of (remoteRequests || [])) {
+          const lIdx = localReqs.findIndex(l => l.id === req.id);
+          if (lIdx === -1) {
+            localReqs.unshift(req);
+            reqsChanged = true;
+          } else {
+            const remoteTime = new Date(req.updatedAt || req.createdAt || 0).getTime();
+            const localTime = new Date(localReqs[lIdx].updatedAt || localReqs[lIdx].createdAt || 0).getTime();
+            if (remoteTime > localTime) {
+              localReqs[lIdx] = req;
+              reqsChanged = true;
             }
           }
-          localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(Array.from(reqMap.values())));
+        }
+
+        // Upload any local non-demo requests to Supabase Cloud
+        for (const l of localReqs) {
+          if (l.isDemo) continue;
+          if (!remoteReqMap.has(l.id)) {
+            syncEmergencyRequestToSupabase(l).catch(() => {});
+          }
+        }
+
+        if (reqsChanged) {
+          localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(localReqs));
           dispatchStorageEvent();
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[REPLATE Storage] Background emergency sync error:', err);
+      }
     })();
 
     // 4. Setup live Realtime listener

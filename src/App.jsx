@@ -58,18 +58,15 @@ export default function App() {
     };
   }, []);
 
-  // Initialize Supabase Cloud Realtime Sync & Backend Polling for Multi-Device Collaboration
+  // Initialize Supabase Cloud Realtime Sync & Multi-Device Collaboration
   useEffect(() => {
-    // Instant sync with live NestJS backend at second 0
-    syncBackendSurplusToLocal().catch(() => {});
-
-    // Realtime listener cleanup handler
+    // Instant initial sync and realtime listener
     const cleanup = initSupabaseCloudSync();
 
-    // Auto-sync from live NestJS backend every 10 seconds so Device 1 & Device 2 stay in sync
+    // Auto-refresh fallback every 15 seconds to ensure HP and Laptop stay in sync even across mobile network shifts
     const interval = setInterval(() => {
-      syncBackendSurplusToLocal().catch(() => {});
-    }, 10000);
+      initSupabaseCloudSync().catch(() => {});
+    }, 15000);
 
     return () => {
       clearInterval(interval);
