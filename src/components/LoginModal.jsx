@@ -17,9 +17,17 @@ import { DEMO_USERS, loginUser, registerUser } from '../utils/storage';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 import Button from './Button';
 
-export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiveLanguage() }) {
+export default function LoginModal({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  initialRole = 'supplier',
+  initialMode = 'login',
+  promptMessage = '',
+  lang = getActiveLanguage() 
+}) {
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [mode, setMode] = useState(initialMode || 'login'); // 'login' | 'register'
   
   // Login form state
   const [identifier, setIdentifier] = useState('');
@@ -29,7 +37,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
   // Register form state
   const [regName, setRegName] = useState('');
   const [regOrg, setRegOrg] = useState('');
-  const [regRole, setRegRole] = useState('supplier'); // 'supplier' | 'mitra'
+  const [regRole, setRegRole] = useState(initialRole || 'supplier'); // 'supplier' | 'mitra'
   const [regUsername, setRegUsername] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -42,18 +50,20 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
     return () => setMounted(false);
   }, []);
 
-  // Lock background scroll when modal is open
+  // Lock background scroll when modal is open and synchronize incoming role/mode/prompt
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       setError('');
+      if (initialMode) setMode(initialMode);
+      if (initialRole) setRegRole(initialRole);
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, initialMode, initialRole]);
 
   if (!isOpen || !mounted) return null;
 
@@ -160,6 +170,14 @@ export default function LoginModal({ isOpen, onClose, onSuccess, lang = getActiv
               : (isId ? 'Buat akun katering atau mitra penerima baru untuk mulai beroperasi:' : 'Create a catering or recipient partner account to get started:')}
           </p>
         </div>
+
+        {/* Contextual Authentication Prompt */}
+        {promptMessage && (
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-50 border border-amber-200/90 text-amber-950 text-xs font-sans flex items-start gap-2 shadow-2xs">
+            <span className="text-base shrink-0">🔒</span>
+            <span className="font-semibold leading-relaxed">{promptMessage}</span>
+          </div>
+        )}
 
         {/* Mode Tab Switcher: Masuk vs Daftar Akun */}
         <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl">

@@ -40,6 +40,7 @@ export default function Navbar({ activePage, onNavigate }) {
   const [demoActive, setDemoActive] = useState(() => isDemoMode());
   const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginModalConfig, setLoginModalConfig] = useState({ role: 'supplier', mode: 'login', prompt: '' });
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
 
@@ -68,6 +69,16 @@ export default function Navbar({ activePage, onNavigate }) {
       setProfileDropdownOpen(false);
     };
 
+    const handleOpenLogin = (e) => {
+      const detail = e.detail || {};
+      setLoginModalConfig({
+        role: detail.role || 'supplier',
+        mode: detail.mode || 'login',
+        prompt: detail.prompt || ''
+      });
+      setLoginModalOpen(true);
+    };
+
     const handleClickOutside = (e) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
         setProfileDropdownOpen(false);
@@ -77,12 +88,14 @@ export default function Navbar({ activePage, onNavigate }) {
     window.addEventListener('replate:storage-update', syncActiveCount);
     window.addEventListener('replate:language-change', syncLanguage);
     window.addEventListener('replate:auth-change', syncAuth);
+    window.addEventListener('replate:open-login', handleOpenLogin);
     document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
       window.removeEventListener('replate:storage-update', syncActiveCount);
       window.removeEventListener('replate:language-change', syncLanguage);
       window.removeEventListener('replate:auth-change', syncAuth);
+      window.removeEventListener('replate:open-login', handleOpenLogin);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
@@ -472,8 +485,18 @@ export default function Navbar({ activePage, onNavigate }) {
       {/* Login Modal */}
       <LoginModal
         isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-        onSuccess={() => handleNavClick('home')}
+        onClose={() => {
+          setLoginModalOpen(false);
+          setLoginModalConfig({ role: 'supplier', mode: 'login', prompt: '' });
+        }}
+        onSuccess={() => {
+          setLoginModalOpen(false);
+          setLoginModalConfig({ role: 'supplier', mode: 'login', prompt: '' });
+          handleNavClick('home');
+        }}
+        initialRole={loginModalConfig.role}
+        initialMode={loginModalConfig.mode}
+        promptMessage={loginModalConfig.prompt}
         lang={lang}
       />
     </header>

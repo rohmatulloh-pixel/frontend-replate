@@ -21,7 +21,9 @@ import {
   deleteEmergencyRequest,
   findMatchingSurplusForRequest,
   allocateSurplusToEmergencyRequest,
-  getCurrentUser
+  getCurrentUser,
+  openLoginModal,
+  loginUser
 } from '../utils/storage';
 import { getFoodDisplayName } from '../utils/calculations';
 import { formatDate } from '../utils/formatters';
@@ -42,7 +44,19 @@ const URGENCY_LEVELS = [
 
 export default function EmergencyDistribution({ onNavigate, lang = 'id', currentUser }) {
   const isId = lang === 'id';
-  const activeUser = currentUser || getCurrentUser();
+  const [activeUser, setActiveUser] = useState(() => currentUser || getCurrentUser());
+
+  useEffect(() => {
+    setActiveUser(currentUser || getCurrentUser());
+  }, [currentUser]);
+
+  useEffect(() => {
+    const handleAuth = (e) => {
+      setActiveUser(e.detail !== undefined ? e.detail : getCurrentUser());
+    };
+    window.addEventListener('replate:auth-change', handleAuth);
+    return () => window.removeEventListener('replate:auth-change', handleAuth);
+  }, []);
 
   const [requests, setRequests] = useState(() => getEmergencyRequests());
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'form'
@@ -111,6 +125,17 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
   const handleSubmitRequest = (e) => {
     e.preventDefault();
+    if (!activeUser) {
+      openLoginModal({
+        role: 'mitra',
+        mode: 'login',
+        prompt: isId 
+          ? 'Wajib masuk sebagai Mitra Penerima untuk mengajukan permohonan pangan darurat.' 
+          : 'Please sign in as a Recipient Partner to submit emergency food requests.'
+      });
+      return;
+    }
+
     if (!validate()) return;
 
     try {
@@ -119,10 +144,10 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
         ...formData,
         foodTypeName: isId ? selectedCat?.labelId : selectedCat?.labelEn,
         requestedBy: {
-          id: activeUser?.id || 'usr-mitra',
-          name: activeUser?.name || 'Dapur Umum Mandiri',
-          role: activeUser?.role || 'mitra',
-          organization: activeUser?.organization || 'Dapur Mandiri'
+          id: activeUser.id,
+          name: activeUser.name,
+          role: activeUser.role,
+          organization: activeUser.organization
         }
       });
 
@@ -150,6 +175,17 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
   // Open matching modal and look for safe surplus candidates
   const handleOpenMatching = (req) => {
+    if (!activeUser) {
+      openLoginModal({
+        role: 'mitra',
+        mode: 'login',
+        prompt: isId 
+          ? 'Wajib masuk untuk mencocokkan dan mengalokasikan bantuan surplus pangan.' 
+          : 'Please sign in to match and allocate surplus food relief.'
+      });
+      return;
+    }
+
     setSelectedRequestForMatching(req);
     const candidates = findMatchingSurplusForRequest(req);
     setMatchingCandidates(candidates);
@@ -157,6 +193,17 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
   // Allocate a surplus item to this emergency request
   const handleAllocateSurplus = (requestId, reportId) => {
+    if (!activeUser) {
+      openLoginModal({
+        role: 'mitra',
+        mode: 'login',
+        prompt: isId 
+          ? 'Wajib masuk untuk mengalokasikan pasokan pangan ke permohonan darurat.' 
+          : 'Please sign in to allocate surplus food.'
+      });
+      return;
+    }
+
     const orgName = activeUser?.organization || activeUser?.name || 'Dapur Umum Mandiri';
     const result = allocateSurplusToEmergencyRequest(requestId, reportId, orgName);
     if (result.success) {
@@ -194,6 +241,17 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
   // Delete emergency request permanently
   const handleDeleteRequest = (id) => {
+    if (!activeUser) {
+      openLoginModal({
+        role: 'mitra',
+        mode: 'login',
+        prompt: isId 
+          ? 'Wajib masuk untuk mengelola atau menghapus permohonan darurat.' 
+          : 'Please sign in to delete emergency requests.'
+      });
+      return;
+    }
+
     const confirmMsg = isId 
       ? 'Apakah Anda yakin ingin menghapus permintaan darurat ini secara permanen?' 
       : 'Are you sure you want to permanently delete this emergency request?';
@@ -286,11 +344,76 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
       {/* 3. Tab: Buat Permintaan Baru */}
       {activeTab === 'form' && (
-        <form onSubmit={handleSubmitRequest} className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-100 shadow-card space-y-8">
-          <div>
-            <span className="text-xs font-display font-extrabold text-rose-600 uppercase tracking-wider block mb-1">
-              📝 {isId ? 'Formulir Permintaan Pangan Darurat' : 'Emergency Food Relief Form'}
-            </span>
+        !activeUser ? (
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border-2 border-rose-200/80 shadow-card text-center space-y-6 max-w-3xl mx-auto">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-rose-500 to-amber-400 text-white flex items-center justify-center text-3xl mx-auto shadow-md shadow-rose-500/20">
+              🚨
+            </div>
+            <div className="space-y-2 max-w-xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 text-rose-900 border border-rose-300 text-xs font-display font-extrabold">
+                <span>🤝</span>
+                <span>{isId ? 'PORTAL MITRA PENERIMA RESMI' : 'OFFICIAL RECIPIENT PARTNER PORTAL'}</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-900 tracking-tight">
+                {isId ? 'Wajib Masuk untuk Mengajukan Bantuan Darurat' : 'Login Required to Submit Emergency Requests'}
+              </h2>
+              <p className="text-xs sm:text-sm font-sans font-semibold text-slate-600 leading-relaxed">
+                {isId
+                  ? 'Pengajuan permintaan pangan darurat (Emergency Relief Intake) hanya dapat diterbitkan oleh lembaga terdaftar (Dapur Umum, Panti Asuhan, Posko Bencana, Yayasan Sosial) demi menjamin bantuan pangan sampai langsung ke penerima manfaat yang sah.'
+                  : 'Emergency food relief requests can only be initiated by registered recipient organizations to guarantee meals reach verified beneficiaries.'}
+              </p>
+            </div>
+
+            <div className="max-w-md mx-auto pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => openLoginModal({ 
+                  role: 'mitra', 
+                  mode: 'login', 
+                  prompt: isId ? 'Masuk dengan akun Mitra Penerima untuk mengajukan permohonan darurat.' : 'Sign in as a Recipient Partner to submit emergency requests.' 
+                })}
+                className="w-full py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-display font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <span>🔑</span>
+                <span>{isId ? 'Masuk Akun Mitra' : 'Sign In as Mitra'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openLoginModal({ 
+                  role: 'mitra', 
+                  mode: 'register', 
+                  prompt: isId ? 'Daftarkan dapur umum, posko bencana, atau yayasan Anda sebagai mitra penerima.' : 'Register your organization as an official recipient partner.' 
+                })}
+                className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-display font-extrabold text-xs border border-slate-300 transition-all flex items-center justify-center gap-2"
+              >
+                <span>📝</span>
+                <span>{isId ? 'Daftar Akun Mitra' : 'Register New Mitra'}</span>
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 max-w-md mx-auto">
+              <p className="text-[11px] font-sans font-bold text-slate-500 mb-2">
+                {isId ? 'Ingin mencoba langsung simulasi permohonan darurat?' : 'Want to test emergency request simulation instantly?'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  loginUser('mitra', 'mitra123');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-display font-extrabold transition-all active:scale-95"
+              >
+                <span>🤝</span>
+                <span>{isId ? '⚡ Akses Cepat Demo: Dapur Umum Mandiri' : '⚡ Quick Demo Access: Dapur Umum Mandiri'}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmitRequest} className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-100 shadow-card space-y-8">
+            <div>
+              <span className="text-xs font-display font-extrabold text-rose-600 uppercase tracking-wider block mb-1">
+                📝 {isId ? 'Formulir Permintaan Pangan Darurat' : 'Emergency Food Relief Form'}
+              </span>
             <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-900">
               {isId ? 'Ajukan Kebutuhan Makanan Mendesak' : 'Submit Urgent Meal Requisition'}
             </h2>
@@ -522,7 +645,8 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
             </Button>
           </div>
         </form>
-      )}
+      )
+    )}
 
       {/* 4. Tab: Daftar Permintaan Darurat */}
       {activeTab === 'list' && (

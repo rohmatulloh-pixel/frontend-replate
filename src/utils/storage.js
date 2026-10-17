@@ -1124,6 +1124,15 @@ export function logoutUser() {
 }
 
 /**
+ * Programmatically open login modal from any component with contextual role/mode/prompt
+ */
+export function openLoginModal(options = {}) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('replate:open-login', { detail: options }));
+  }
+}
+
+/**
  * Generate 2 realistic curated demo emergency requests for recipient portal
  */
 export function getCuratedDemoEmergencyRequests() {

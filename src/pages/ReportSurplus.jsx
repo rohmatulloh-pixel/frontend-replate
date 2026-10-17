@@ -19,7 +19,7 @@ import {
 } from '../data/foods';
 import Button from '../components/Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
-import { getCurrentUser } from '../utils/storage';
+import { getCurrentUser, openLoginModal, loginUser } from '../utils/storage';
 
 export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage() }) {
   const [currentLang, setCurrentLang] = useState(lang || getActiveLanguage());
@@ -115,6 +115,18 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!currentUser) {
+      openLoginModal({
+        role: 'supplier',
+        mode: 'login',
+        prompt: isId 
+          ? 'Wajib masuk sebagai Donatur untuk melaporkan surplus pangan.' 
+          : 'Please sign in as a Food Donor to report surplus food.'
+      });
+      return;
+    }
+
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -134,12 +146,12 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
       conditionLabel: getConditionText(formData.conditionId).label || selectedCondition.label,
       availableTimeLabel: getTimeWindowText(formData.timeWindowId) || selectedTime.label,
       notes: formData.notes.trim(),
-      reportedBy: currentUser ? {
+      reportedBy: {
         id: currentUser.id,
         name: currentUser.name,
         organization: currentUser.organization,
         role: currentUser.role
-      } : null
+      }
     };
 
     if (onSubmitReport) {
@@ -166,6 +178,80 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
   const getSourceText = (sourceId) => {
     return t.sourceContexts?.[sourceId] || sourceId;
   };
+
+  // Mandatory Authentication Guard for Unauthenticated Users
+  if (!currentUser) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+        <div className="bg-white rounded-3xl p-8 sm:p-12 border-2 border-brand-200/80 shadow-card text-center space-y-6 relative overflow-hidden">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-brand-500 to-teal-400 text-white flex items-center justify-center text-3xl mx-auto shadow-md shadow-brand-500/20">
+            🔐
+          </div>
+
+          <div className="space-y-2 max-w-xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 text-brand-900 border border-brand-300 text-xs font-display font-extrabold">
+              <span>🏪</span>
+              <span>{isId ? 'PORTAL MITRA DONATUR PANGAN' : 'SURPLUS FOOD DONOR PORTAL'}</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-display font-black text-brand-900 tracking-tight">
+              {isId ? 'Wajib Masuk untuk Melaporkan Surplus' : 'Login Required to Log Surplus Food'}
+            </h1>
+            <p className="text-xs sm:text-sm font-sans font-semibold text-slate-600 leading-relaxed">
+              {isId
+                ? 'Untuk menjamin ketertelusuran pangan (traceability), akuntabilitas batch masakan, serta kepatuhan standar Food Safety Gate, pelaporan surplus makanan hanya dapat dilakukan oleh mitra donatur terdaftar (Katering, Restoran, Bakery, Hotel, atau Toko Retail).'
+                : 'To ensure food traceability, batch accountability, and strict Food Safety Gate compliance, reporting surplus food is strictly restricted to verified food donors.'}
+            </p>
+          </div>
+
+          {/* Action Cards / Buttons */}
+          <div className="max-w-md mx-auto pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => openLoginModal({ 
+                role: 'supplier', 
+                mode: 'login', 
+                prompt: isId ? 'Masuk dengan akun Donatur Anda untuk melanjutkan pelaporan makanan.' : 'Sign in as a Food Donor to continue reporting food.' 
+              })}
+              className="w-full py-3 px-4 rounded-2xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-display font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <span>🔑</span>
+              <span>{isId ? 'Masuk Akun Donatur' : 'Sign In as Donor'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openLoginModal({ 
+                role: 'supplier', 
+                mode: 'register', 
+                prompt: isId ? 'Daftarkan usaha kuliner atau dapur Anda sebagai mitra donatur resmi.' : 'Register your kitchen or business as an authorized food donor.' 
+              })}
+              className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-display font-extrabold text-xs border border-slate-300 transition-all flex items-center justify-center gap-2"
+            >
+              <span>📝</span>
+              <span>{isId ? 'Daftar Akun Donatur' : 'Register New Donor'}</span>
+            </button>
+          </div>
+
+          {/* Fast-Track 1-Tap Demo Donor Login */}
+          <div className="pt-4 border-t border-slate-100 max-w-md mx-auto">
+            <p className="text-[11px] font-sans font-bold text-slate-500 mb-2">
+              {isId ? 'Ingin mencoba langsung simulasi donatur?' : 'Want to test donor simulation instantly?'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                loginUser('supplier', 'supplier123');
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-display font-extrabold transition-all active:scale-95"
+            >
+              <span>🏪</span>
+              <span>{isId ? '⚡ Akses Cepat Demo: Dapur Grand Catering' : '⚡ Quick Demo Access: Grand Catering'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-6">
