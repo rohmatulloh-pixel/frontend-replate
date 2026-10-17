@@ -5,6 +5,16 @@
  */
 
 import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate.js';
+import {
+  syncReportToSupabase,
+  deleteReportFromSupabase,
+  syncEmergencyRequestToSupabase,
+  fetchRemoteSurplusReports,
+  fetchRemoteEmergencyRequests,
+  setupSupabaseRealtimeSubscriptions,
+  mapSupabaseRowToReport,
+  mapRowToEmergencyRequest
+} from './supabase.js';
 
 export const STORAGE_KEYS = {
   USER_REPORTS: 'replate_user_reports_v2',
@@ -204,6 +214,12 @@ export function saveReport(report) {
     const updated = [newReport, ...userReports];
     localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(updated));
     dispatchStorageEvent();
+
+    // Async sync to Supabase Cloud in background
+    if (typeof window !== 'undefined') {
+      syncReportToSupabase(newReport).catch(() => {});
+    }
+
     return newReport;
   } catch (err) {
     console.error('[REPLATE Storage] Error saving report:', err);
@@ -227,6 +243,12 @@ export function updateReport(id, updates) {
       };
       localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
       dispatchStorageEvent();
+
+      // Async sync to Supabase Cloud in background
+      if (typeof window !== 'undefined') {
+        syncReportToSupabase(userReports[uIdx]).catch(() => {});
+      }
+
       return userReports[uIdx];
     }
 
@@ -386,6 +408,11 @@ export function deleteReport(id) {
     if (uFiltered.length !== userReports.length) {
       localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(uFiltered));
       dispatchStorageEvent();
+
+      if (typeof window !== 'undefined') {
+        deleteReportFromSupabase(id).catch(() => {});
+      }
+
       return true;
     }
 
@@ -1004,6 +1031,12 @@ export function saveEmergencyRequest(requestData) {
   const updated = [newRequest, ...existing];
   localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(updated));
   dispatchStorageEvent();
+
+  // Async sync to Supabase Cloud in background
+  if (typeof window !== 'undefined') {
+    syncEmergencyRequestToSupabase(newRequest).catch(() => {});
+  }
+
   return newRequest;
 }
 
@@ -1024,6 +1057,12 @@ export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
 
   localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(existing));
   dispatchStorageEvent();
+
+  // Async sync to Supabase Cloud in background
+  if (typeof window !== 'undefined') {
+    syncEmergencyRequestToSupabase(existing[idx]).catch(() => {});
+  }
+
   return existing[idx];
 }
 
@@ -1104,4 +1143,115 @@ export function allocateSurplusToEmergencyRequest(requestId, reportId, recipient
   dispatchStorageEvent();
   return { success: true, report: updatedReport };
 }
+
+/**
+ * Synchronize local datasets with Supabase Cloud
+ * Fetches remote surplus reports & emergency requests, merges without data loss,
+ * and attaches Realtime WebSocket listeners.
+ */
+export async function initSupabaseCloudSync() {
+  if (typeof window === 'undefined') return () => {};
+
+  try {
+    // 1. Fetch remote surplus reports and merge with local user reports
+    const remoteReports = await fetchRemoteSurplusReports();
+    if (remoteReports.length > 0) {
+      const localUsers = getUserReports();
+      const reportMap = new Map();
+
+      for (const r of remoteReports) {
+        reportMap.set(r.id, r);
+      }
+      for (const l of localUsers) {
+        const existing = reportMap.get(l.id);
+        if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
+          reportMap.set(l.id, l);
+        }
+      }
+
+      const merged = Array.from(reportMap.values());
+      localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(merged));
+    }
+
+    // 2. Fetch remote emergency requests and merge
+    const remoteRequests = await fetchRemoteEmergencyRequests();
+    if (remoteRequests.length > 0) {
+      const localReqs = getEmergencyRequests();
+      const reqMap = new Map();
+
+      for (const req of remoteRequests) {
+        reqMap.set(req.id, req);
+      }
+      for (const l of localReqs) {
+        const existing = reqMap.get(l.id);
+        if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
+          reqMap.set(l.id, l);
+        }
+      }
+
+      const mergedReqs = Array.from(reqMap.values());
+      localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(mergedReqs));
+    }
+
+    dispatchStorageEvent();
+
+    // 3. Setup live Realtime listener
+    const cleanup = setupSupabaseRealtimeSubscriptions(
+      // On remote surplus change
+      (payload) => {
+        try {
+          const { eventType, new: newRow, old: oldRow } = payload;
+          const userReports = getUserReports();
+
+          if (eventType === 'DELETE' && oldRow?.id) {
+            const filtered = userReports.filter(r => r.id !== oldRow.id);
+            localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(filtered));
+          } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
+            const incoming = mapSupabaseRowToReport(newRow);
+            const idx = userReports.findIndex(r => r.id === incoming.id);
+            if (idx !== -1) {
+              userReports[idx] = incoming;
+            } else {
+              userReports.unshift(incoming);
+            }
+            localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
+          }
+          dispatchStorageEvent();
+        } catch (err) {
+          console.warn('[REPLATE Supabase Realtime] Error processing report event:', err);
+        }
+      },
+      // On remote emergency request change
+      (payload) => {
+        try {
+          const { eventType, new: newRow, old: oldRow } = payload;
+          const reqs = getEmergencyRequests();
+
+          if (eventType === 'DELETE' && oldRow?.id) {
+            const filtered = reqs.filter(r => r.id !== oldRow.id);
+            localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
+          } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
+            const incoming = mapRowToEmergencyRequest(newRow);
+            const idx = reqs.findIndex(r => r.id === incoming.id);
+            if (idx !== -1) {
+              reqs[idx] = incoming;
+            } else {
+              reqs.unshift(incoming);
+            }
+            localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(reqs));
+          }
+          dispatchStorageEvent();
+        } catch (err) {
+          console.warn('[REPLATE Supabase Realtime] Error processing emergency event:', err);
+        }
+      }
+    );
+
+    return cleanup;
+  } catch (err) {
+    console.warn('[REPLATE Supabase] Error during initial cloud sync:', err);
+    return () => {};
+  }
+}
+
 

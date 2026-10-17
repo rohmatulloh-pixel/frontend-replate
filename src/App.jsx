@@ -13,7 +13,7 @@ import Impact from './pages/Impact';
 import Insights from './pages/Insights';
 import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
-import { saveReport, getCurrentUser } from './utils/storage';
+import { saveReport, getCurrentUser, initSupabaseCloudSync } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
 
 const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency'];
@@ -56,6 +56,14 @@ export default function App() {
       window.removeEventListener('replate:storage-update', handleStorageUpdate);
       window.removeEventListener('replate:language-change', handleLanguageUpdate);
       window.removeEventListener('replate:auth-change', handleAuthUpdate);
+    };
+  }, []);
+
+  // Initialize Supabase Cloud Realtime Sync & Cloud Fetch
+  useEffect(() => {
+    const cleanup = initSupabaseCloudSync();
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
     };
   }, []);
 
