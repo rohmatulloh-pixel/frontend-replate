@@ -54,7 +54,7 @@ export default function MitraDashboard({ onNavigate, lang = 'id', currentUser })
               : 'Welcome to the recipient intake portal. Track nutritious surplus meals in transit towards your kitchen, inspect physical food safety upon delivery, and distribute to beneficiaries.'}
           </p>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+          <div className="pt-2 flex flex-col sm:flex-row items-center gap-3 flex-wrap">
             <Button
               variant="sun"
               size="md"
@@ -68,11 +68,21 @@ export default function MitraDashboard({ onNavigate, lang = 'id', currentUser })
             <Button
               variant="secondary"
               size="md"
+              onClick={() => onNavigate('emergency')}
+              icon={AlertTriangle}
+              className="w-full sm:w-auto text-xs px-6 py-3 font-display font-extrabold bg-rose-50 hover:bg-rose-100 text-rose-900 border-rose-300"
+            >
+              {isId ? '🚨 Distribusi & Permintaan Darurat' : '🚨 Emergency Food Requisition'}
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => onNavigate('impact')}
               icon={HeartHandshake}
               className="w-full sm:w-auto text-xs px-6 py-3 font-display font-extrabold"
             >
-              {isId ? '🤝 Rekap Porsi Tersalurkan' : '🤝 Beneficiary Distribution Stats'}
+              {isId ? '🤝 Rekap Porsi Tersalurkan' : '🤝 Distribution Stats'}
             </Button>
           </div>
         </div>

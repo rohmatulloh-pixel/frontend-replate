@@ -67,7 +67,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage(), initia
   }, [initialSelectedId]);
 
   const handleAdvance = (id, newStatus, note, extraPayload) => {
-    updateJourneyStatus(id, newStatus, note, extraPayload);
+    updateJourneyStatus(id, newStatus, note, extraPayload, currentUser);
     refreshReports();
   };
 

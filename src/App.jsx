@@ -12,17 +12,31 @@ import Journey from './pages/Journey';
 import Impact from './pages/Impact';
 import Insights from './pages/Insights';
 import Learn from './pages/Learn';
+import EmergencyDistribution from './pages/EmergencyDistribution';
 import { saveReport, getCurrentUser } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
 
+const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency'];
+
+function getInitialPage() {
+  if (typeof window !== 'undefined' && window.location.hash) {
+    const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+    if (VALID_PAGES.includes(hash)) {
+      return hash;
+    }
+  }
+  return 'home';
+}
+
 export default function App() {
-  const [activePage, setActivePage] = useState('home');
+  const [activePage, setActivePage] = useState(getInitialPage);
   const [pendingReport, setPendingReport] = useState(null);
   const [, setStorageVersion] = useState(0);
   const [lang, setLang] = useState(() => getActiveLanguage());
   const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+  const [selectedJourneyId, setSelectedJourneyId] = useState(null);
 
-  // Sync state whenever storage or language changes
+  // Sync state whenever storage, language, or auth changes
   useEffect(() => {
     const handleStorageUpdate = () => {
       setStorageVersion(v => v + 1);
@@ -45,12 +59,26 @@ export default function App() {
     };
   }, []);
 
-  const [selectedJourneyId, setSelectedJourneyId] = useState(null);
+  // Sync URL hash with activePage to support browser refresh & back/forward
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (VALID_PAGES.includes(hash)) {
+        setActivePage(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Handle surplus submission from ReportSurplus
   const handleSurplusSubmitted = (reportPayload) => {
     setPendingReport(reportPayload);
     setActivePage('assessment');
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'assessment';
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -62,12 +90,19 @@ export default function App() {
       setSelectedJourneyId(saved.id);
     }
     setActivePage('journeys');
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'journeys';
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Handle navigation
   const navigateTo = (pageId, journeyId = null) => {
-    setActivePage(pageId);
+    const target = VALID_PAGES.includes(pageId) ? pageId : 'home';
+    setActivePage(target);
+    if (typeof window !== 'undefined') {
+      window.location.hash = target;
+    }
     if (journeyId) {
       setSelectedJourneyId(journeyId);
     }
@@ -96,11 +131,27 @@ export default function App() {
           )
         )}
 
-        {activePage === 'report' && (
-          <ReportSurplus
-            onSubmitReport={handleSurplusSubmitted}
+        {activePage === 'emergency' && (
+          <EmergencyDistribution
+            onNavigate={navigateTo}
             lang={lang}
+            currentUser={currentUser}
           />
+        )}
+
+        {activePage === 'report' && (
+          currentUser?.role === 'mitra' ? (
+            <EmergencyDistribution
+              onNavigate={navigateTo}
+              lang={lang}
+              currentUser={currentUser}
+            />
+          ) : (
+            <ReportSurplus
+              onSubmitReport={handleSurplusSubmitted}
+              lang={lang}
+            />
+          )
         )}
 
         {activePage === 'assessment' && (
@@ -126,6 +177,30 @@ export default function App() {
 
         {activePage === 'learn' && (
           <Learn onNavigate={navigateTo} lang={lang} />
+        )}
+
+        {/* Sensible Fallback for Invalid Page Identifiers */}
+        {!VALID_PAGES.includes(activePage) && (
+          <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
+            <div className="text-6xl">🧭</div>
+            <h2 className="text-2xl font-display font-black text-brand-900">
+              {lang === 'id' ? 'Halaman Tidak Ditemukan' : 'Page Not Found'}
+            </h2>
+            <p className="text-sm font-semibold text-slate-600">
+              {lang === 'id'
+                ? 'Halaman yang Anda tuju tidak tersedia atau telah dipindahkan.'
+                : 'The page you are looking for does not exist or has been moved.'}
+            </p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => navigateTo('home')}
+                className="px-6 py-2.5 rounded-full bg-brand-600 text-white font-display font-bold text-sm shadow-md hover:bg-brand-700 transition-colors"
+              >
+                {lang === 'id' ? 'Kembali ke Beranda' : 'Return to Home'}
+              </button>
+            </div>
+          </div>
         )}
       </main>
 

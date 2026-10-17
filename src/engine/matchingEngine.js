@@ -14,6 +14,7 @@
  * - If Food Safety Gate is REJECT: Excludes all human meal destinations (kitchens, shelters, food banks).
  *   Only certified organic/compost facilities are matched if organic diversion is viable.
  * - If Food Safety Gate is REVIEW: Flags destinations as locked pending inspection completion.
+ * - Explicitly notes distances as simulated estimates rather than live GPS tracking.
  */
 
 import { MATCHING_WEIGHTS } from '../data/rules.js';
@@ -86,7 +87,7 @@ export function matchDestinations({
       timeCompat = 90;
     }
 
-    // 5. Distance Factor (0-100)
+    // 5. Distance Factor (0-100) - based on simulated benchmark distance
     const distanceScore = Math.max(30, Math.min(100, Math.round(100 - (dest.demoDistanceKm * 3.5))));
 
     // 6. Destination Need (0-100)
@@ -107,20 +108,20 @@ export function matchDestinations({
     const isLockedForReview = Boolean(foodSafetyGate && foodSafetyGate.status === 'REVIEW');
     const isRestrictedToCompost = Boolean(foodSafetyGate && foodSafetyGate.status === 'REJECT');
 
-    // Compatibility Checklist
+    // Compatibility Checklist with honest simulated distance indicators
     const checklist = isId ? [
       { label: 'Kesesuaian jenis pangan', passed: foodCompat >= 80, detail: dest.acceptedFoodTypes.includes(foodType.id) ? 'Kecocokan langsung' : 'Kategori sesuai' },
       { label: 'Kesesuaian rute penanganan', passed: routeCompat >= 80, detail: `Mendukung rute ${recommendedRoute}` },
       { label: 'Kapasitas penerimaan', passed: capacityFit >= 80, detail: `Kapasitas intake ${dest.currentAvailableCapacityKg} kg` },
       { label: 'Kesesuaian jam intake', passed: timeCompat >= 80, detail: dest.operatingWindow },
-      { label: 'Jarak & kedekatan', passed: distanceScore >= 70, detail: `${dest.demoDistanceKm} km dari lokasi` },
+      { label: 'Jarak & kedekatan (simulasi)', passed: distanceScore >= 70, detail: `${dest.demoDistanceKm} km (estimasi simulasi)` },
       { label: 'Tingkat urgensi kebutuhan', passed: needScore >= 75, detail: `Prioritas kebutuhan ${dest.urgencyNeed === 'high' ? 'TINGGI' : dest.urgencyNeed === 'medium' ? 'SEDANG' : 'STANDAR'}` }
     ] : [
       { label: 'Food compatibility', passed: foodCompat >= 80, detail: dest.acceptedFoodTypes.includes(foodType.id) ? 'Direct match' : 'Category fit' },
       { label: 'Route compatibility', passed: routeCompat >= 80, detail: `${recommendedRoute} supported` },
       { label: 'Capacity available', passed: capacityFit >= 80, detail: `${dest.currentAvailableCapacityKg} kg intake capacity` },
       { label: 'Time window match', passed: timeCompat >= 80, detail: dest.operatingWindow },
-      { label: 'Proximity / Distance', passed: distanceScore >= 70, detail: `${dest.demoDistanceKm} km away` },
+      { label: 'Distance estimate (simulated)', passed: distanceScore >= 70, detail: `${dest.demoDistanceKm} km (simulated benchmark)` },
       { label: 'Community urgency need', passed: needScore >= 75, detail: `${dest.urgencyNeed.toUpperCase()} need level` }
     ];
 
@@ -128,12 +129,12 @@ export function matchDestinations({
     const rationale = isId ? [
       dest.acceptedFoodTypes.includes(foodType.id) ? `Menerima langsung jenis ${foodType.name}` : `Menerima kategori ${foodType.category}`,
       `Kapasitas intake ${dest.currentAvailableCapacityKg} kg siap menampung ${qtyInKg.toFixed(1)} kg`,
-      `Berjarak ${dest.demoDistanceKm} km dengan jendela intake terbuka`,
+      `Berjarak ~${dest.demoDistanceKm} km (estimasi simulasi) dengan jendela intake terbuka`,
       ...(isRestrictedToCompost ? ['Hanya untuk pengolahan organik kompos / bio-energi. Dilarang untuk makanan manusia.'] : [])
     ] : [
       dest.acceptedFoodTypes.includes(foodType.id) ? `Directly accepts ${foodType.name}` : `Accepts ${foodType.category} category`,
       `Intake capacity of ${dest.currentAvailableCapacityKg} kg easily handles ${qtyInKg.toFixed(1)} kg`,
-      `Located ${dest.demoDistanceKm} km away with open intake operating window`,
+      `Located ~${dest.demoDistanceKm} km away (simulated benchmark) with open intake operating window`,
       ...(isRestrictedToCompost ? ['Restricted to organic composting / bio-energy recovery only. Not for human food.'] : [])
     ];
 

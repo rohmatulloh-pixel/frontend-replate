@@ -100,7 +100,7 @@ export const OFFICIAL_SAFETY_SOURCES = [
 export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
   const {
     foodTypeId = 'cooked-rice',
-    conditionId = 'suitable',
+    conditionId = null,
     safetyConditionId = null,
     storageHistoryId = null,
     storageTempId = null,
@@ -117,28 +117,81 @@ export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
   const foodType = FOOD_TYPES.find(f => f.id === foodTypeId) || FOOD_TYPES[0];
   const category = foodType.category || 'prepared';
 
-  // Resolved values (mapping legacy condition if safety parameters not yet explicitly set)
-  const resolvedCondition = safetyConditionId || (
-    conditionId === 'fresh_excellent' ? 'no_visible_damage' :
-    conditionId === 'suitable' ? 'no_visible_damage' :
-    conditionId === 'near_window' ? 'altered_needs_check' :
-    conditionId === 'not_suitable' ? 'clear_spoilage' : 'not_checked'
-  );
+  // Resolved values (never use optimistic defaults for missing safety checks)
+  let resolvedCondition = 'not_checked';
+  if (safetyConditionId) {
+    resolvedCondition = safetyConditionId;
+  } else if (conditionId) {
+    if (conditionId === 'not_suitable') {
+      resolvedCondition = 'clear_spoilage';
+    } else if (conditionId === 'near_window') {
+      resolvedCondition = 'altered_needs_check';
+    } else if (conditionId === 'fresh_excellent' || conditionId === 'suitable') {
+      resolvedCondition = 'no_visible_damage';
+    } else {
+      resolvedCondition = 'not_checked';
+    }
+  }
 
-  const resolvedStorage = storageHistoryId || 'known_compliant';
-  const resolvedPackaging = packagingConditionId || (
-    category === 'produce' ? 'not_applicable_fresh' : 'intact_proper'
+  // Mandatory checks: NEVER default missing values to compliant/intact/hygienic
+  let resolvedStorage = storageHistoryId || 'not_checked';
+  let resolvedPackaging = packagingConditionId || (
+    // Only whole fresh produce with natural protective peel may qualify for not_applicable_fresh if explicitly indicated
+    category === 'produce' && packagingConditionId === 'not_applicable_fresh' ? 'not_applicable_fresh' : (packagingConditionId || 'not_checked')
   );
-  const resolvedHandling = handlingIntegrityId || 'hygienic_separated';
-  const resolvedTemp = storageTempId || (
-    category === 'prepared' || category === 'meat_fish' ? 'hot_holding_above_60' :
-    category === 'dairy' ? 'cold_holding_below_4' : 'ambient_room_temp'
-  );
+  let resolvedHandling = handlingIntegrityId || 'not_checked';
+  let resolvedTemp = storageTempId || 'not_checked';
 
   const rejectReasons = [];
   const reviewReasons = [];
   const missingInformation = [];
   const checkedParameters = {};
+
+  // Strict Whitelist Enum Validation: Check for invalid, unrecognized, or manipulated values
+  const KNOWN_CONDITIONS = ['no_visible_damage', 'altered_needs_check', 'clear_spoilage', 'not_checked'];
+  const KNOWN_STORAGES = ['known_compliant', 'unknown', 'suspected_non_compliant', 'not_checked'];
+  const KNOWN_PACKAGINGS = ['intact_proper', 'food_grade_sealed', 'damaged_leaking_contaminated', 'not_applicable_fresh', 'unknown', 'not_checked'];
+  const KNOWN_HANDLINGS = ['hygienic_separated', 'potential_cross_contamination', 'unknown', 'not_checked'];
+  const KNOWN_TEMPS = ['hot_holding_above_60', 'cold_holding_below_4', 'room_temp_controlled', 'uncontrolled_fluctuating', 'unknown', 'not_checked'];
+
+  if (!KNOWN_CONDITIONS.includes(resolvedCondition)) {
+    resolvedCondition = 'not_checked';
+    reviewReasons.push(isId ? `Nilai kondisi fisik tidak dikenal ("${safetyConditionId}"). Verifikasi diperlukan.` : `Unrecognized safety condition value ("${safetyConditionId}"). Verification required.`);
+    missingInformation.push(isId ? 'Koreksi nilai kondisi fisik pangan' : 'Valid food safety condition');
+  }
+
+  if (!KNOWN_STORAGES.includes(resolvedStorage)) {
+    resolvedStorage = 'not_checked';
+    reviewReasons.push(isId ? `Nilai riwayat penyimpanan tidak dikenal ("${storageHistoryId}"). Verifikasi diperlukan.` : `Unrecognized storage history value ("${storageHistoryId}"). Verification required.`);
+    missingInformation.push(isId ? 'Koreksi riwayat penyimpanan' : 'Valid storage history');
+  }
+
+  if (!KNOWN_PACKAGINGS.includes(resolvedPackaging)) {
+    resolvedPackaging = 'not_checked';
+    reviewReasons.push(isId ? `Nilai integritas kemasan tidak dikenal ("${packagingConditionId}"). Verifikasi diperlukan.` : `Unrecognized packaging condition value ("${packagingConditionId}"). Verification required.`);
+    missingInformation.push(isId ? 'Koreksi integritas kemasan' : 'Valid packaging condition');
+  }
+
+  if (!KNOWN_HANDLINGS.includes(resolvedHandling)) {
+    resolvedHandling = 'not_checked';
+    reviewReasons.push(isId ? `Nilai penanganan pangan tidak dikenal ("${handlingIntegrityId}"). Verifikasi diperlukan.` : `Unrecognized handling integrity value ("${handlingIntegrityId}"). Verification required.`);
+    missingInformation.push(isId ? 'Koreksi penanganan pangan' : 'Valid handling integrity');
+  }
+
+  if (!KNOWN_TEMPS.includes(resolvedTemp)) {
+    resolvedTemp = 'not_checked';
+    reviewReasons.push(isId ? `Nilai suhu penyimpanan tidak dikenal ("${storageTempId}"). Verifikasi diperlukan.` : `Unrecognized storage temperature value ("${storageTempId}"). Verification required.`);
+    missingInformation.push(isId ? 'Koreksi suhu penyimpanan' : 'Valid storage temperature');
+  }
+
+  // Precautionary principle: Conflicting initial rating vs detailed check
+  if (conditionId === 'not_suitable' && resolvedCondition !== 'clear_spoilage') {
+    rejectReasons.push(
+      isId
+        ? 'Input kondisi pangan saling bertentangan: laporan awal mengindikasikan tidak layak, namun pemeriksaan fisik mengklaim tidak rusak. Prinsip kehati-hatian: status ditolak demi keamanan (Ref: BPOM).'
+        : 'Conflicting food condition inputs: initial intake flagged as unsuitable while physical screening claimed no damage. Precautionary principle enforces rejection (Ref: BPOM).'
+    );
+  }
 
   // ==========================================
   // PARAMETER 1: FOOD TYPE & CATEGORY SPECIFIC CONTEXT
@@ -310,11 +363,11 @@ export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
           : 'Prepared meal / meat held at uncontrolled temperature (Danger Zone 5°C–60°C). Holding duration verification required.'
       );
       if (storageStatus === 'pass') storageStatus = 'review';
-    } else if (resolvedTemp === 'unknown' && storageStatus === 'pass') {
+    } else if ((resolvedTemp === 'unknown' || resolvedTemp === 'not_checked') && storageStatus === 'pass') {
       reviewReasons.push(
         isId
-          ? 'Informasi suhu penyimpanan makanan matang / daging tidak diketahui. Wajib diketahui untuk mencegah pertumbuhan spora patogen.'
-          : 'Storage holding temperature unknown for prepared food / meat. Required to prevent pathogen growth.'
+          ? 'Informasi suhu penyimpanan makanan matang / daging belum diverifikasi. Wajib menjaga >60°C atau <4°C untuk mencegah proliferasi patogen.'
+          : 'Storage holding temperature unknown or unverified for prepared food / meat (>60°C or <4°C required).'
       );
       storageStatus = 'review';
       missingInformation.push(isId ? 'Suhu penyimpanan aktual' : 'Actual storage temperature');
@@ -323,7 +376,7 @@ export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
     if (resolvedTemp !== 'cold_holding_below_4' && storageStatus !== 'reject') {
       reviewReasons.push(
         isId
-          ? 'Produk susu dan olahan dingin memerlukan rantai dingin konsisten (<4°C). Suhu saat ini perlu diverifikasi.'
+          ? 'Produk susu dan olahan dingin memerlukan rantai dingin konsisten (<4°C). Suhu saat ini belum diverifikasi.'
           : 'Dairy and chilled items require continuous cold chain (<4°C). Current holding temperature requires verification.'
       );
       if (storageStatus === 'pass') storageStatus = 'review';
@@ -351,11 +404,11 @@ export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
         : 'Packaging damaged, leaking, swollen/dented can, or directly contaminated. Bacterial/chemical hazard (Ref: BPOM Cek KLIK).'
     );
     packagingStatus = 'reject';
-  } else if (resolvedPackaging === 'not_checked') {
+  } else if (resolvedPackaging === 'not_checked' || resolvedPackaging === 'unknown') {
     reviewReasons.push(
       isId
-        ? 'Integritas kemasan atau wadah makanan belum diperiksa.'
-        : 'Packaging or container integrity has not been inspected.'
+        ? 'Integritas kemasan atau wadah makanan belum diperiksa (Prinsip BPOM Cek KLIK).'
+        : 'Packaging or container integrity has not been inspected (BPOM Cek KLIK principle).'
     );
     missingInformation.push(isId ? 'Pemeriksaan integritas wadah/kemasan' : 'Container/packaging inspection');
     packagingStatus = 'review';
@@ -381,11 +434,11 @@ export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
     );
     missingInformation.push(isId ? 'Verifikasi pemisahan dari bahan mentah' : 'Raw/cooked separation verification');
     handlingStatus = 'review';
-  } else if (resolvedHandling === 'unknown') {
+  } else if (resolvedHandling === 'unknown' || resolvedHandling === 'not_checked') {
     reviewReasons.push(
       isId
-        ? 'Riwayat kebersihan penanganan makanan tidak diketahui. Informasi tidak diketahui tidak boleh diperlakukan otomatis sebagai aman.'
-        : 'Food handling history is undocumented. Unknown handling cannot be assumed safe.'
+        ? 'Riwayat kebersihan penanganan makanan belum diverifikasi atau tidak diketahui. Informasi tidak lengkap tidak boleh diperlakukan otomatis sebagai aman.'
+        : 'Food handling history is unverified or undocumented. Incomplete information cannot be presumed safe.'
     );
     missingInformation.push(isId ? 'Informasi penanganan pangan' : 'Food handling information');
     handlingStatus = 'review';
@@ -487,6 +540,10 @@ export function evaluateFoodSafetyGate(surplusReport = {}, lang = 'id') {
     alternativeRouteRecommendation,
     citations: OFFICIAL_SAFETY_SOURCES,
     evaluatedAt: new Date().toISOString(),
-    ruleVersion: FOOD_SAFETY_RULE_VERSION
+    ruleVersion: FOOD_SAFETY_RULE_VERSION,
+    isOfficialCertification: false, // Explicit indicator that PASS is screening, not official certification
+    safetyDisclaimer: isId
+      ? 'Penapisan berbasis aturan parameter awal. Bukan pengganti inspeksi sanitasi resmi atau uji mikrobiologis laboratorium.'
+      : 'Rule-based parameter screening. Not a replacement for official health inspection or laboratory microbiological tests.'
   };
 }

@@ -1,16 +1,19 @@
 /**
  * REPLATE Centralized LocalStorage Utility
  * Manages reports, journey logs, impact data, and Food Safety Gate statuses
- * with zero external database dependencies.
+ * with isolated namespaces to guarantee user data protection against demo/simulation operations.
  */
 
 import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate.js';
 
-const STORAGE_KEYS = {
-  REPORTS: 'replate_surplus_reports_v1',
+export const STORAGE_KEYS = {
+  USER_REPORTS: 'replate_user_reports_v2',
+  DEMO_REPORTS: 'replate_demo_reports_v2',
+  LEGACY_REPORTS: 'replate_surplus_reports_v1',
   PREFERENCES: 'replate_user_preferences_v1',
   DEMO_FLAG: 'replate_demo_loaded_v1',
-  USER_SESSION: 'replate_user_session_v1'
+  USER_SESSION: 'replate_user_session_v1',
+  EMERGENCY_REQUESTS: 'replate_emergency_requests_v1'
 };
 
 // Custom event to sync components upon storage updates
@@ -21,40 +24,149 @@ const dispatchStorageEvent = () => {
 };
 
 /**
- * Get all surplus reports from localStorage
- * Includes safe, conservative migration for legacy reports lacking Food Safety Gate data.
+ * Backward-compatible migration from legacy storage key.
+ * Safely partitions legacy reports into isolated user and demo stores,
+ * preserving all user-created records and evaluating missing safety gates.
  */
-export function getReports() {
-  if (typeof window === 'undefined') return [];
+export function migrateLegacyStorage() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
+    const legacyRaw = localStorage.getItem(STORAGE_KEYS.LEGACY_REPORTS);
+    if (!legacyRaw) return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(legacyRaw);
+    } catch {
+      // Malformed legacy data - clear to unblock normal operation
+      localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+      return;
+    }
+
+    if (!Array.isArray(parsed)) {
+      localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+      return;
+    }
+
+    const existingUser = getUserReports();
+    const existingDemo = getDemoReports();
+    const userMap = new Map(existingUser.map(r => [r.id, r]));
+    const demoMap = new Map(existingDemo.map(r => [r.id, r]));
+
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object') continue;
+      const isDemoItem = Boolean(item.isDemo || (typeof item.id === 'string' && item.id.startsWith('demo-')));
+      const itemWithSafety = {
+        ...item,
+        foodSafetyGate: item.foodSafetyGate || evaluateFoodSafetyGate(item)
+      };
+
+      if (isDemoItem) {
+        if (!demoMap.has(itemWithSafety.id)) {
+          demoMap.set(itemWithSafety.id, itemWithSafety);
+        }
+      } else {
+        if (!userMap.has(itemWithSafety.id)) {
+          userMap.set(itemWithSafety.id, itemWithSafety);
+        }
+      }
+    }
+
+    localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(Array.from(userMap.values())));
+    if (demoMap.size > 0) {
+      localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(Array.from(demoMap.values())));
+    }
+    localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+  } catch (err) {
+    console.error('[REPLATE Storage] Error migrating legacy storage:', err);
+  }
+}
+
+/**
+ * Get user-created reports from isolated store
+ */
+export function getUserReports() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.USER_REPORTS);
     if (!raw) return [];
     const list = JSON.parse(raw);
-    if (!Array.isArray(list)) return [];
-    return list;
+    return Array.isArray(list) ? list : [];
   } catch (err) {
-    console.error('[REPLATE Storage] Error reading reports:', err);
+    console.error('[REPLATE Storage] Error reading user reports:', err);
     return [];
   }
 }
 
 /**
- * Get single report by ID
+ * Get demo/simulation reports from isolated demo store
  */
-export function getReportById(id) {
-  const reports = getReports();
-  return reports.find(r => r.id === id) || null;
+export function getDemoReports() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DEMO_REPORTS);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    console.error('[REPLATE Storage] Error reading demo reports:', err);
+    return [];
+  }
 }
 
 /**
- * Save a new surplus report
+ * Get all active reports: User reports + Demo reports (if demo mode is active).
+ * Automatically migrates legacy stores and returns combined list sorted by createdAt desc.
+ */
+export function getReports() {
+  migrateLegacyStorage();
+  const userList = getUserReports();
+  const demoList = isDemoMode() ? getDemoReports() : [];
+
+  const combined = [...userList, ...demoList];
+  return combined.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+}
+
+/**
+ * Get a single report by ID across user and demo datasets
+ */
+export function getReportById(id) {
+  migrateLegacyStorage();
+  const userMatch = getUserReports().find(r => r.id === id);
+  if (userMatch) return userMatch;
+  const demoMatch = getDemoReports().find(r => r.id === id);
+  return demoMatch || null;
+}
+
+/**
+ * Save a new user-created surplus report.
+ * Guaranteed to write strictly to STORAGE_KEYS.USER_REPORTS and never touches demo records.
  */
 export function saveReport(report) {
+  migrateLegacyStorage();
   try {
-    const reports = getReports();
+    const userReports = getUserReports();
 
-    // Ensure foodSafetyGate information is present and properly evaluated
-    const gateResult = report.foodSafetyGate || evaluateFoodSafetyGate(report);
+    // Re-evaluate Food Safety Gate strictly from actual parameters to prevent frontend status spoofing
+    const gateResult = evaluateFoodSafetyGate(report);
+
+    const isHumanRoute = !report.recommendedRoute || ['REDISTRIBUTE', 'PROCESS', 'HUMAN'].includes(report.recommendedRoute);
+    const isUnverifiedOrRejected = gateResult.status === 'REJECT' || gateResult.status === 'REVIEW';
+
+    // Disallow human recipient match if food is rejected or unverified
+    let selectedDest = report.selectedDestination || null;
+    let initialJourneyStatus = report.journeyStatus || 'REPORTED';
+
+    if (isUnverifiedOrRejected && isHumanRoute) {
+      if (selectedDest && !selectedDest.preferredRoutes?.includes('ORGANIC')) {
+        selectedDest = null;
+      }
+      if (['MATCHED', 'RESCUE_INITIATED', 'RECEIVED'].includes(initialJourneyStatus)) {
+        initialJourneyStatus = 'REPORTED';
+      }
+    } else if (selectedDest && initialJourneyStatus === 'REPORTED') {
+      initialJourneyStatus = 'MATCHED';
+    }
 
     // Build base events
     const defaultEvents = [
@@ -70,11 +182,11 @@ export function saveReport(report) {
       }
     ];
 
-    if (report.selectedDestination) {
+    if (selectedDest && initialJourneyStatus === 'MATCHED') {
       defaultEvents.push({
         status: 'MATCHED',
         timestamp: new Date().toISOString(),
-        note: `Penyaluran disetujui ke: ${report.selectedDestination.name} (${report.selectedDestination.type})`
+        note: `Penyaluran disetujui ke: ${selectedDest.name} (${selectedDest.type})`
       });
     }
 
@@ -83,12 +195,14 @@ export function saveReport(report) {
       id: report.id || `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       createdAt: report.createdAt || new Date().toISOString(),
       foodSafetyGate: gateResult,
-      journeyStatus: report.journeyStatus || (report.selectedDestination ? 'MATCHED' : 'REPORTED'),
-      journeyEvents: report.journeyEvents || defaultEvents
+      selectedDestination: selectedDest,
+      journeyStatus: initialJourneyStatus,
+      journeyEvents: report.journeyEvents || defaultEvents,
+      isDemo: false
     };
 
-    const updated = [newReport, ...reports];
-    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(updated));
+    const updated = [newReport, ...userReports];
+    localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(updated));
     dispatchStorageEvent();
     return newReport;
   } catch (err) {
@@ -98,23 +212,38 @@ export function saveReport(report) {
 }
 
 /**
- * Update an existing report
+ * Update an existing report in its respective namespace
  */
 export function updateReport(id, updates) {
+  migrateLegacyStorage();
   try {
-    const reports = getReports();
-    const index = reports.findIndex(r => r.id === id);
-    if (index === -1) return null;
+    const userReports = getUserReports();
+    const uIdx = userReports.findIndex(r => r.id === id);
+    if (uIdx !== -1) {
+      userReports[uIdx] = {
+        ...userReports[uIdx],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
+      dispatchStorageEvent();
+      return userReports[uIdx];
+    }
 
-    reports[index] = {
-      ...reports[index],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
+    const demoReports = getDemoReports();
+    const dIdx = demoReports.findIndex(r => r.id === id);
+    if (dIdx !== -1) {
+      demoReports[dIdx] = {
+        ...demoReports[dIdx],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(demoReports));
+      dispatchStorageEvent();
+      return demoReports[dIdx];
+    }
 
-    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(reports));
-    dispatchStorageEvent();
-    return reports[index];
+    return null;
   } catch (err) {
     console.error('[REPLATE Storage] Error updating report:', err);
     throw err;
@@ -145,11 +274,92 @@ export function reassessReportSafety(id, updatedPayload, lang = 'id') {
 }
 
 /**
- * Update Journey Status and append timeline event
+ * Valid state transitions for the supply chain journey
  */
-export function updateJourneyStatus(id, newStatus, note = '', extraPayload = {}) {
+export const VALID_STATUS_TRANSITIONS = {
+  REPORTED: ['ASSESSED', 'ROUTE_SELECTED', 'MATCHED', 'CANCELLED', 'EXPIRED'],
+  ASSESSED: ['ROUTE_SELECTED', 'MATCHED', 'CANCELLED', 'EXPIRED'],
+  ROUTE_SELECTED: ['MATCHED', 'CANCELLED', 'EXPIRED'],
+  MATCHED: ['RESCUE_INITIATED', 'CANCELLED', 'EXPIRED'],
+  RESCUE_INITIATED: ['RECEIVED', 'CANCELLED', 'EXPIRED'],
+  SAFETY_SCREENED: ['ASSESSED', 'ROUTE_SELECTED', 'MATCHED', 'CANCELLED', 'EXPIRED'],
+  SAFETY_REASSESSED: ['ASSESSED', 'ROUTE_SELECTED', 'MATCHED', 'CANCELLED', 'EXPIRED'],
+  RECEIVED: [],
+  CANCELLED: [],
+  EXPIRED: []
+};
+
+/**
+ * Check if a status transition is permitted
+ */
+export function isValidStatusTransition(currentStatus, newStatus) {
+  if (!currentStatus || currentStatus === newStatus) return true;
+  const allowed = VALID_STATUS_TRANSITIONS[currentStatus] || [];
+  return allowed.includes(newStatus);
+}
+
+/**
+ * Update Journey Status with deterministic state machine verification, role authorization,
+ * terminal state protection, in-transit incident validation, and safety gate check
+ */
+export function updateJourneyStatus(id, newStatus, note = '', extraPayload = {}, actingUser = null) {
   const report = getReportById(id);
   if (!report) return null;
+
+  const currentStatus = report.journeyStatus || 'REPORTED';
+  if (!isValidStatusTransition(currentStatus, newStatus)) {
+    console.warn(`[REPLATE Workflow] Invalid status transition from ${currentStatus} to ${newStatus} for report ${id}`);
+    return null;
+  }
+
+  // Terminal state protection: terminal records cannot transition to any other state
+  if (['RECEIVED', 'CANCELLED', 'EXPIRED'].includes(currentStatus)) {
+    console.warn(`[REPLATE Workflow] Report ${id} is in terminal status ${currentStatus} and cannot transition.`);
+    return null;
+  }
+
+  const user = actingUser || getCurrentUser();
+
+  // Role authorization: Supplier cannot confirm delivery intake on behalf of recipient
+  if (newStatus === 'RECEIVED' && user?.role === 'supplier') {
+    console.warn(`[REPLATE Workflow] Supplier (${user?.name || user?.id}) is not authorized to confirm delivery intake on behalf of recipient.`);
+    return null;
+  }
+
+  // IN_TRANSIT (RESCUE_INITIATED) cancellation validation:
+  // Cannot be cancelled via casual / normal cancellation; requires explicit incident / bottleneck report with reason
+  if (currentStatus === 'RESCUE_INITIATED' && newStatus === 'CANCELLED') {
+    const hasExplicitIssue = Boolean(
+      extraPayload.isIncidentReport ||
+      (extraPayload.cancellationReason && extraPayload.cancellationReason.trim().length >= 4) ||
+      (note && (note.toLowerCase().includes('kendala') || note.toLowerCase().includes('incident') || note.toLowerCase().includes('masalah')))
+    );
+    if (!hasExplicitIssue) {
+      console.warn(`[REPLATE Workflow] Cannot cancel transaction in RESCUE_INITIATED via normal action. Explicit incident reporting with reason is required.`);
+      return null;
+    }
+  }
+
+  // Precedence rule: REJECT & REVIEW status cannot transition to human consumption distribution
+  if (['MATCHED', 'RESCUE_INITIATED', 'RECEIVED'].includes(newStatus)) {
+    const gateStatus = report.foodSafetyGate?.status || 'REVIEW';
+    const isHumanRoute = !report.recommendedRoute || ['REDISTRIBUTE', 'PROCESS', 'HUMAN'].includes(report.recommendedRoute);
+    if ((gateStatus === 'REJECT' || gateStatus === 'REVIEW') && isHumanRoute) {
+      console.warn(`[REPLATE Workflow] Food report ${id} with status ${gateStatus} cannot transition to ${newStatus} for human consumption`);
+      return null;
+    }
+  }
+
+  const normalizedPayload = { ...extraPayload };
+  if (newStatus === 'RECEIVED') {
+    const rawWeight = extraPayload.actualReceivedKg ?? report.actualReceivedKg ?? report.quantity;
+    normalizedPayload.actualReceivedKg = Math.max(0, Number(rawWeight) || 0);
+    normalizedPayload.receivedAt = extraPayload.receivedAt || new Date().toISOString();
+  } else if (newStatus === 'CANCELLED') {
+    normalizedPayload.cancelledAt = extraPayload.cancelledAt || new Date().toISOString();
+  } else if (newStatus === 'EXPIRED') {
+    normalizedPayload.expiredAt = extraPayload.expiredAt || new Date().toISOString();
+  }
 
   const currentEvents = report.journeyEvents || [];
   const newEvent = {
@@ -160,21 +370,34 @@ export function updateJourneyStatus(id, newStatus, note = '', extraPayload = {})
 
   return updateReport(id, {
     journeyStatus: newStatus,
-    ...extraPayload,
+    ...normalizedPayload,
     journeyEvents: [...currentEvents, newEvent]
   });
 }
 
 /**
- * Delete a report
+ * Delete a report from its respective store
  */
 export function deleteReport(id) {
+  migrateLegacyStorage();
   try {
-    const reports = getReports();
-    const filtered = reports.filter(r => r.id !== id);
-    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(filtered));
-    dispatchStorageEvent();
-    return true;
+    const userReports = getUserReports();
+    const uFiltered = userReports.filter(r => r.id !== id);
+    if (uFiltered.length !== userReports.length) {
+      localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(uFiltered));
+      dispatchStorageEvent();
+      return true;
+    }
+
+    const demoReports = getDemoReports();
+    const dFiltered = demoReports.filter(r => r.id !== id);
+    if (dFiltered.length !== demoReports.length) {
+      localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(dFiltered));
+      dispatchStorageEvent();
+      return true;
+    }
+
+    return false;
   } catch (err) {
     console.error('[REPLATE Storage] Error deleting report:', err);
     return false;
@@ -182,12 +405,14 @@ export function deleteReport(id) {
 }
 
 /**
- * Clear all surplus data
+ * Clear all surplus data (both user and demo), preserving user session
  */
 export function clearAllData() {
   try {
-    localStorage.removeItem(STORAGE_KEYS.REPORTS);
+    localStorage.removeItem(STORAGE_KEYS.USER_REPORTS);
+    localStorage.removeItem(STORAGE_KEYS.DEMO_REPORTS);
     localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
+    localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
     dispatchStorageEvent();
     return true;
   } catch (err) {
@@ -412,20 +637,48 @@ export function getCuratedDemoReports() {
  * Check if demo mode is active
  */
 export function isDemoMode() {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return false;
   return localStorage.getItem(STORAGE_KEYS.DEMO_FLAG) === 'true';
 }
 
 /**
- * Load curated simulation demo data into localStorage
+ * Load curated simulation demo data into isolated demo storage namespace.
+ * Deduplicates by record id to prevent duplication on multiple calls.
+ * Guaranteed to leave STORAGE_KEYS.USER_REPORTS untouched.
  */
 export function loadDemoData() {
+  migrateLegacyStorage();
   try {
-    const demoReports = getCuratedDemoReports();
-    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(demoReports));
+    const curated = getCuratedDemoReports();
+    const existingDemo = getDemoReports();
+    const demoMap = new Map();
+
+    for (const d of existingDemo) {
+      demoMap.set(d.id, d);
+    }
+    for (const c of curated) {
+      if (!demoMap.has(c.id)) {
+        demoMap.set(c.id, c);
+      }
+    }
+
+    const mergedDemo = Array.from(demoMap.values());
+    localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(mergedDemo));
     localStorage.setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
+
+    // Load demo emergency requests if none exist
+    try {
+      const existingEmg = getEmergencyRequests();
+      if (existingEmg.length === 0) {
+        const demoEmg = getCuratedDemoEmergencyRequests();
+        localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(demoEmg));
+      }
+    } catch {
+      // Ignore emergency demo error in edge environments
+    }
+
     dispatchStorageEvent();
-    return demoReports;
+    return mergedDemo;
   } catch (err) {
     console.error('[REPLATE Storage] Error loading demo data:', err);
     return [];
@@ -433,20 +686,56 @@ export function loadDemoData() {
 }
 
 /**
- * Clear only demo data without destroying real user reports
+ * Reset demo data back to original 5 curated simulation reports.
+ * Affects ONLY demo records; user records remain completely untouched.
+ */
+export function resetDemoData() {
+  migrateLegacyStorage();
+  try {
+    const freshCurated = getCuratedDemoReports();
+    localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(freshCurated));
+    localStorage.setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
+
+    // Reset demo emergency requests while preserving user-created requests
+    try {
+      const emg = getEmergencyRequests();
+      const userEmg = emg.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-'));
+      const freshDemoEmg = getCuratedDemoEmergencyRequests();
+      localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify([...userEmg, ...freshDemoEmg]));
+    } catch {
+      // Ignore in edge environments
+    }
+
+    dispatchStorageEvent();
+    return freshCurated;
+  } catch (err) {
+    console.error('[REPLATE Storage] Error resetting demo data:', err);
+    return [];
+  }
+}
+
+/**
+ * Clear only demo data without modifying user-created reports or settings.
  */
 export function clearDemoData() {
+  migrateLegacyStorage();
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS);
-    if (!raw) {
-      localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
-      dispatchStorageEvent();
-      return true;
-    }
-    const list = JSON.parse(raw);
-    const realReports = Array.isArray(list) ? list.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-')) : [];
-    localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(realReports));
+    localStorage.removeItem(STORAGE_KEYS.DEMO_REPORTS);
     localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
+
+    // Keep user emergency requests, remove only demo emergency requests
+    try {
+      const emg = getEmergencyRequests();
+      const userEmg = emg.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-'));
+      if (userEmg.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(userEmg));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.EMERGENCY_REQUESTS);
+      }
+    } catch {
+      // Ignore in edge environments
+    }
+
     dispatchStorageEvent();
     return true;
   } catch (err) {
@@ -508,7 +797,7 @@ const dispatchAuthEvent = (user) => {
  * Get the currently logged-in user session
  */
 export function getCurrentUser() {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USER_SESSION);
     if (!raw) return null;
@@ -587,4 +876,232 @@ export function logoutUser() {
   }
 }
 
+/**
+ * Generate 2 realistic curated demo emergency requests for recipient portal
+ */
+export function getCuratedDemoEmergencyRequests() {
+  const now = Date.now();
+  const h = (hours) => new Date(now - hours * 3600 * 1000).toISOString();
+
+  return [
+    {
+      id: 'demo-emg-001',
+      isDemo: true,
+      type: 'EMERGENCY_REQUEST',
+      neededFoodType: 'cooked_meals',
+      foodTypeName: 'Makanan Siap Santap / Nasi Kotak',
+      requestedPortions: 60,
+      estimatedKg: 21,
+      beneficiaryCount: 60,
+      beneficiaryGroup: 'Warga Pengungsi Genangan Air',
+      targetLocation: 'Posko Dapur Umum Mandiri, Tebet Barat, Jakarta Selatan',
+      urgencyLevel: 'CRITICAL',
+      urgencyDeadline: 'Hari ini sebelum 12:30 WIB (Makan Siang)',
+      urgencyReason: 'Kedatangan 40 warga pengungsi tambahan pasca luapan kali, persediaan lauk pauk posko tidak mencukupi untuk shift siang.',
+      contactPerson: 'Ibu Siti Rahma (Koordinator Dapur)',
+      contactPhone: '0812-3456-7890',
+      status: 'OPEN',
+      notes: 'Diutamakan makanan siap santap higienis bersuhu hangat dengan kemasan kotak terpisah.',
+      createdAt: h(1.5),
+      matchedSurplusId: null
+    },
+    {
+      id: 'demo-emg-002',
+      isDemo: true,
+      type: 'EMERGENCY_REQUEST',
+      neededFoodType: 'fresh_produce',
+      foodTypeName: 'Sayuran Segar & Bahan Olah Pokok',
+      requestedPortions: 100,
+      estimatedKg: 35,
+      beneficiaryCount: 120,
+      beneficiaryGroup: 'Warga Lansia & Balita Dhuafa',
+      targetLocation: 'Dapur Komunitas Lansia Mandiri, Kampung Melayu',
+      urgencyLevel: 'HIGH',
+      urgencyDeadline: 'Sore ini sebelum 17:00 WIB',
+      urgencyReason: 'Bahan masakan sayur dan protein untuk memasak makan malam 120 lansia binaan habis.',
+      contactPerson: 'Bapak Hendra (Relawan Posko)',
+      contactPhone: '0857-1234-5678',
+      status: 'OPEN',
+      notes: 'Dapat menerima sayur mayur segar atau bahan mentah higienis yang belum dipotong.',
+      createdAt: h(3.0),
+      matchedSurplusId: null
+    }
+  ];
+}
+
+/**
+ * Get all emergency requests from dedicated isolated namespace
+ */
+export function getEmergencyRequests() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.EMERGENCY_REQUESTS);
+    if (!raw) {
+      if (isDemoMode()) {
+        const demoRequests = getCuratedDemoEmergencyRequests();
+        localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(demoRequests));
+        return demoRequests;
+      }
+      return [];
+    }
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    console.error('[REPLATE Storage] Error reading emergency requests:', err);
+    return [];
+  }
+}
+
+/**
+ * Save a new emergency food request from recipient partner
+ */
+export function saveEmergencyRequest(requestData) {
+  if (!requestData || typeof requestData !== 'object') {
+    throw new Error('Data permintaan darurat tidak valid.');
+  }
+
+  if (!requestData.neededFoodType) {
+    throw new Error('Jenis makanan yang dibutuhkan wajib dipilih.');
+  }
+
+  const portions = Number(requestData.requestedPortions);
+  if (!portions || portions <= 0) {
+    throw new Error('Jumlah porsi harus berupa angka positif.');
+  }
+
+  if (!requestData.targetLocation || !requestData.targetLocation.trim()) {
+    throw new Error('Lokasi tujuan pengantaran wajib diisi.');
+  }
+
+  if (!requestData.urgencyReason || !requestData.urgencyReason.trim()) {
+    throw new Error('Alasan urgensi kebutuhan wajib diisi.');
+  }
+
+  const existing = getEmergencyRequests();
+  const currentUser = getCurrentUser();
+
+  const newRequest = {
+    ...requestData,
+    id: requestData.id || `emg-req-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    type: 'EMERGENCY_REQUEST',
+    requestedPortions: portions,
+    estimatedKg: Math.round(portions * 0.35 * 10) / 10,
+    beneficiaryCount: Number(requestData.beneficiaryCount) || portions,
+    beneficiaryGroup: requestData.beneficiaryGroup || 'Masyarakat Membutuhkan',
+    targetLocation: requestData.targetLocation.trim(),
+    urgencyLevel: requestData.urgencyLevel || 'HIGH',
+    urgencyDeadline: requestData.urgencyDeadline || 'Hari ini',
+    urgencyReason: requestData.urgencyReason.trim(),
+    contactPerson: requestData.contactPerson || currentUser?.name || 'Koordinator Dapur',
+    contactPhone: requestData.contactPhone || '0812-xxxx-xxxx',
+    notes: requestData.notes || '',
+    status: 'OPEN',
+    createdAt: requestData.createdAt || new Date().toISOString(),
+    isDemo: false,
+    matchedSurplusId: null
+  };
+
+  const updated = [newRequest, ...existing];
+  localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(updated));
+  dispatchStorageEvent();
+  return newRequest;
+}
+
+/**
+ * Update emergency request status
+ */
+export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
+  const existing = getEmergencyRequests();
+  const idx = existing.findIndex(r => r.id === id);
+  if (idx === -1) return null;
+
+  existing[idx] = {
+    ...existing[idx],
+    status: newStatus,
+    ...extraData,
+    updatedAt: new Date().toISOString()
+  };
+
+  localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(existing));
+  dispatchStorageEvent();
+  return existing[idx];
+}
+
+/**
+ * Delete emergency request from storage
+ */
+export function deleteEmergencyRequest(id) {
+  const existing = getEmergencyRequests();
+  const filtered = existing.filter(r => r.id !== id);
+  if (filtered.length !== existing.length) {
+    localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
+    dispatchStorageEvent();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Find matching active surplus items for an emergency request
+ * Strictly enforces that surplus must have Food Safety Gate status 'PASS'
+ */
+export function findMatchingSurplusForRequest(emergencyRequest) {
+  if (!emergencyRequest) return [];
+  const reports = getReports();
+
+  return reports.filter(r => {
+    // 1. Food safety gate MUST be PASS (cannot match unverified or spoiled food)
+    if (r.foodSafetyGate?.status !== 'PASS') return false;
+
+    // 2. Journey status must be in pre-matched or ready state
+    if (!['REPORTED', 'ASSESSED', 'ROUTE_SELECTED'].includes(r.journeyStatus)) return false;
+
+    // 3. Recommended route must be for human consumption
+    if (r.recommendedRoute && !['REDISTRIBUTE', 'PROCESS', 'HUMAN'].includes(r.recommendedRoute)) return false;
+
+    return true;
+  });
+}
+
+/**
+ * Allocate surplus report to an emergency request
+ * Links surplus report with recipient and transitions status to MATCHED
+ */
+export function allocateSurplusToEmergencyRequest(requestId, reportId, recipientOrg = 'Dapur Umum Mandiri') {
+  const report = getReportById(reportId);
+  if (!report) return { success: false, error: 'Laporan surplus tidak ditemukan' };
+
+  if (report.foodSafetyGate?.status !== 'PASS') {
+    return { success: false, error: 'Makanan belum lolos verifikasi Food Safety Gate' };
+  }
+
+  // Update surplus destination and status
+  const updatedReport = updateReport(reportId, {
+    journeyStatus: 'MATCHED',
+    selectedDestination: {
+      id: 'dest-mitra-emergency',
+      name: recipientOrg,
+      type: 'Emergency Redistribution Hub',
+      allocatedToRequestId: requestId
+    },
+    journeyEvents: [
+      ...(report.journeyEvents || []),
+      {
+        status: 'MATCHED',
+        timestamp: new Date().toISOString(),
+        note: `Dialokasikan untuk Permintaan Darurat: ${requestId} (${recipientOrg})`
+      }
+    ]
+  });
+
+  // Update emergency request status
+  updateEmergencyRequestStatus(requestId, 'ALLOCATED', {
+    matchedSurplusId: reportId,
+    matchedSurplusName: report.foodName || report.foodTypeId,
+    matchedAt: new Date().toISOString()
+  });
+
+  dispatchStorageEvent();
+  return { success: true, report: updatedReport };
+}
 

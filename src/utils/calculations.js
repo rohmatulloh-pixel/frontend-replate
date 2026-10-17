@@ -37,15 +37,20 @@ export function calculateImpactSummary(reports = []) {
   const destinationDistribution = {};
 
   reports.forEach(rep => {
-    // Standardize weight to kg
-    const kg = rep.unit === 'portions' ? (rep.quantity * METRIC_ASSUMPTIONS.AVERAGE_SERVING_KG) : Number(rep.quantity) || 0;
+    const rawKg = rep.unit === 'portions' ? (rep.quantity * METRIC_ASSUMPTIONS.AVERAGE_SERVING_KG) : Number(rep.quantity) || 0;
+    const kg = Math.max(0, isNaN(rawKg) ? 0 : rawKg);
     totalHandledKg += kg;
 
     if (rep.journeyStatus === 'RECEIVED') {
+      const rawReceivedKg = rep.actualReceivedKg !== undefined && rep.actualReceivedKg !== null && Number(rep.actualReceivedKg) > 0
+        ? Number(rep.actualReceivedKg)
+        : kg;
+      const effectiveKg = Math.max(0, isNaN(rawReceivedKg) ? 0 : rawReceivedKg);
+
       if (rep.recommendedRoute === 'ORGANIC') {
-        totalOrganicKg += kg;
+        totalOrganicKg += effectiveKg;
       } else {
-        totalRescuedKg += kg;
+        totalRescuedKg += effectiveKg;
       }
       completedJourneys += 1;
     } else if (rep.journeyStatus === 'RESCUE_INITIATED' || rep.journeyStatus === 'MATCHED') {
@@ -472,7 +477,7 @@ export function calculateRescuePerformance(reports = [], lang = 'id') {
     hasData: totalRescuedKg > 0,
     co2eAvoidedKg: totalRescuedKg > 0 ? Math.round(totalRescuedKg * METRIC_ASSUMPTIONS.CO2E_FACTOR_PER_KG * 10) / 10 : null,
     waterSavedLiters: totalRescuedKg > 0 ? Math.round(totalRescuedKg * METRIC_ASSUMPTIONS.WATER_LITERS_PER_KG) : null,
-    mealsEquivalent: totalRescuedKg > 0 ? Math.round(totalRescuedKg / METRIC_ASSUMPTIONS.AVERAGE_SERVING_KG) : null,
+    mealsEquivalent: humanRescuedKg > 0 ? Math.round(humanRescuedKg / METRIC_ASSUMPTIONS.AVERAGE_SERVING_KG) : (totalRescuedKg > 0 ? 0 : null),
     methodologyNote: isId
       ? 'Metrik sekunder berdasarkan pemodelan faktor US EPA WARM (2.1 kg CO₂e/kg) dan rata-rata FAO (250 L air/kg). Hanya dihitung berdasarkan berat aktual pangan yang telah diverifikasi diterima.'
       : 'Secondary estimates modeled with US EPA WARM (2.1 kg CO2e/kg) and FAO global water footprint benchmark (250 L/kg). Only calculated from verified received surplus.'

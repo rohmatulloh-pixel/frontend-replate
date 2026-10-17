@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "node scripts/test-food-safety-gate.js && node scripts/test-rescue-performance.js && node scripts/test-storage-demo-isolation.js && node scripts/test-second-pass-audit.js && node scripts/test-workflow-role-fixes.js",
     "preview": "vite preview"
   },
   "dependencies": {

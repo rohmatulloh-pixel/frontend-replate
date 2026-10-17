@@ -345,4 +345,140 @@ testCase('Contaminated packaging / dented can maps to SAFE_DISPOSAL', () => {
   assert(result.reasons.some(r => r.toLowerCase().includes('kemasan') || r.toLowerCase().includes('packaging')));
 });
 
+// =========================================================================
+// SCENARIO 14: Missing mandatory safety information -> REVIEW (Never defaults to PASS)
+// =========================================================================
+testCase('Missing mandatory safety information (empty/incomplete) -> REVIEW', () => {
+  const result = evaluateFoodSafetyGate({
+    foodTypeId: 'cooked-rice'
+    // storageHistoryId, packagingConditionId, handlingIntegrityId all missing!
+  }, 'id');
+
+  assert.strictEqual(result.status, 'REVIEW');
+  assert.strictEqual(result.eligibleForConsumptionRecommendation, false);
+  assert(result.missingInformation.length >= 2);
+});
+
+// =========================================================================
+// SCENARIO 15: Missing packaging or hygiene assessment -> REVIEW
+// =========================================================================
+testCase('Missing packaging or hygiene assessment -> REVIEW', () => {
+  // Packaging missing
+  const res1 = evaluateFoodSafetyGate({
+    foodTypeId: 'cooked-rice',
+    safetyConditionId: 'no_visible_damage',
+    storageHistoryId: 'known_compliant',
+    storageTempId: 'hot_holding_above_60',
+    handlingIntegrityId: 'hygienic_separated'
+    // packagingConditionId missing
+  }, 'id');
+  assert.strictEqual(res1.status, 'REVIEW');
+  assert(res1.missingInformation.some(m => m.toLowerCase().includes('kemasan') || m.toLowerCase().includes('packaging')));
+
+  // Hygiene missing
+  const res2 = evaluateFoodSafetyGate({
+    foodTypeId: 'cooked-rice',
+    safetyConditionId: 'no_visible_damage',
+    storageHistoryId: 'known_compliant',
+    storageTempId: 'hot_holding_above_60',
+    packagingConditionId: 'intact_proper'
+    // handlingIntegrityId missing
+  }, 'id');
+  assert.strictEqual(res2.status, 'REVIEW');
+  assert(res2.missingInformation.some(m => m.toLowerCase().includes('penanganan') || m.toLowerCase().includes('handling')));
+});
+
+// =========================================================================
+// SCENARIO 16: Conflicting safety inputs -> REJECT (Confirmed rejection strictly overrides)
+// =========================================================================
+testCase('Conflicting safety inputs: visual good but storage non-compliant -> REJECT', () => {
+  const result = evaluateFoodSafetyGate({
+    foodTypeId: 'cooked-rice',
+    conditionId: 'fresh_excellent',
+    safetyConditionId: 'no_visible_damage', // Appears visually fresh
+    storageHistoryId: 'suspected_non_compliant', // BUT thermal abuse occurred
+    storageTempId: 'uncontrolled_fluctuating',
+    packagingConditionId: 'intact_proper',
+    handlingIntegrityId: 'hygienic_separated'
+  }, 'id');
+
+  assert.strictEqual(result.status, 'REJECT');
+  assert.strictEqual(result.eligibleForConsumptionRecommendation, false);
+  assert(result.reasons.length > 0);
+});
+
+// =========================================================================
+// SCENARIO 17: High Rescue Score combined with REVIEW -> Human route held
+// =========================================================================
+testCase('High Rescue Score combined with REVIEW -> Route held pending verification', () => {
+  const reviewReport = {
+    foodTypeId: 'cooked-rice',
+    quantity: 15,
+    unit: 'kg',
+    conditionId: 'suitable',
+    safetyConditionId: 'no_visible_damage',
+    storageHistoryId: 'unknown', // Unknown history triggers REVIEW
+    timeWindowId: '1_3h'
+  };
+
+  const gateResult = evaluateFoodSafetyGate(reviewReport, 'id');
+  assert.strictEqual(gateResult.status, 'REVIEW');
+
+  const score = calculateRescueScore(reviewReport, 'id');
+  assert(score.score >= 80); // High rescue score
+
+  const route = determineRoute({ ...reviewReport, foodSafetyGate: gateResult }, 'id');
+  assert.strictEqual(route.route, 'PENDING_VERIFICATION');
+
+  const matches = matchDestinations({
+    foodTypeId: reviewReport.foodTypeId,
+    quantity: reviewReport.quantity,
+    unit: reviewReport.unit,
+    recommendedRoute: route.route,
+    foodSafetyGate: gateResult
+  }, 'id');
+  assert(matches.every(m => m.isLockedForReview === true));
+});
+
+// =========================================================================
+// SCENARIO 18: Valid report submitted through actual report validation path
+// =========================================================================
+testCase('Valid report submitted through actual report validation path -> PASS', () => {
+  const validFormPayload = {
+    foodTypeId: 'cooked-rice',
+    foodName: 'Nasi Matang',
+    category: 'prepared',
+    quantity: 10,
+    unit: 'kg',
+    conditionId: 'suitable',
+    safetyConditionId: 'no_visible_damage',
+    storageHistoryId: 'known_compliant',
+    storageTempId: 'hot_holding_above_60',
+    storageDurationHours: 1.5,
+    packagingConditionId: 'intact_proper',
+    handlingIntegrityId: 'hygienic_separated',
+    timeWindowId: '1_3h',
+    sourceContextId: 'Catering',
+    notes: 'Banquet hot pans'
+  };
+
+  const gateResult = evaluateFoodSafetyGate(validFormPayload, 'id');
+  assert.strictEqual(gateResult.status, 'PASS');
+  assert.strictEqual(gateResult.eligibleForConsumptionRecommendation, true);
+
+  const route = determineRoute({ ...validFormPayload, foodSafetyGate: gateResult }, 'id');
+  assert.strictEqual(route.route, 'REDISTRIBUTE');
+
+  const matches = matchDestinations({
+    foodTypeId: validFormPayload.foodTypeId,
+    quantity: validFormPayload.quantity,
+    unit: validFormPayload.unit,
+    recommendedRoute: route.route,
+    timeWindowId: validFormPayload.timeWindowId,
+    foodSafetyGate: gateResult
+  }, 'id');
+  assert(matches.length > 0);
+  assert(matches.some(m => !m.isLockedForReview && !m.isRestrictedToCompost));
+});
+
 console.log(`\n🎉 All ${passedTests} of ${totalTests} test scenarios passed successfully!`);

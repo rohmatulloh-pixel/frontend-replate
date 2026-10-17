@@ -79,6 +79,12 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
     if (!formData.storageHistoryId) {
       errs.storageHistoryId = isId ? 'Pilih riwayat penyimpanan' : 'Select storage history';
     }
+    if (!formData.packagingConditionId) {
+      errs.packagingConditionId = isId ? 'Pilih kondisi kemasan' : 'Select packaging condition';
+    }
+    if (!formData.handlingIntegrityId) {
+      errs.handlingIntegrityId = isId ? 'Pilih kebersihan penanganan' : 'Select handling hygiene';
+    }
     if (!formData.timeWindowId) {
       errs.timeWindowId = isId ? 'Pilih sisa waktu aman' : 'Select safe time window';
     }

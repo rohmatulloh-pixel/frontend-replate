@@ -116,7 +116,7 @@ export default function Navbar({ activePage, onNavigate }) {
         { id: 'home', label: isId ? 'Beranda Mitra' : 'Receiver Hub' },
         { id: 'journeys', label: isId ? 'Pasokan Masuk' : 'Inbound Intake', badge: activeCount > 0 ? activeCount : null },
         { id: 'impact', label: isId ? 'Dampak Bantuan' : 'Distribution Impact' },
-        { id: 'report', label: isId ? 'Redistribusi Darurat' : 'Emergency Transfer' },
+        { id: 'emergency', label: isId ? 'Distribusi Darurat' : 'Emergency Requests' },
         { id: 'learn', label: isId ? 'Standar Kelayakan' : 'Intake Standards' },
       ];
     }
