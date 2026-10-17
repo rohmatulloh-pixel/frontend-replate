@@ -240,6 +240,12 @@ export default function Navbar({ activePage, onNavigate }) {
             </span>
           </button>
 
+          {/* Cloud Live Badge (Desktop) */}
+          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black font-display bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-2xs shrink-0 select-none" title="Terhubung langsung ke Cloud Supabase & Render">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Cloud Live</span>
+          </div>
+
           {/* Auth Button / Profile Dropdown (Desktop) */}
           {!currentUser ? (
             <button

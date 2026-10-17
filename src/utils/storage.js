@@ -15,6 +15,7 @@ import {
   mapSupabaseRowToReport,
   mapRowToEmergencyRequest
 } from './supabase.js';
+import api, { mapReportToBackendDto, mapBackendListingToReport } from '../services/api.js';
 
 export const STORAGE_KEYS = {
   USER_REPORTS: 'replate_user_reports_v2',
@@ -231,12 +232,74 @@ export function saveReport(report) {
     // Async sync to Supabase Cloud in background (real browser only)
     if (isRealBrowserEnvironment()) {
       syncReportToSupabase(newReport).catch(() => {});
+
+      // Async sync to NestJS Backend API if enabled
+      if (api.isLiveApiEnabled()) {
+        (async () => {
+          try {
+            await ensureApiToken();
+            const dto = mapReportToBackendDto(newReport);
+            const createdRes = await api.surplus.create(dto);
+            const backendListing = createdRes?.data || createdRes;
+
+            // If a destination was selected, immediately assign it to trigger backend Journey creation
+            if (backendListing?.id && newReport.selectedDestination) {
+              const recipientUuid = (typeof newReport.selectedDestination.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(newReport.selectedDestination.id))
+                ? newReport.selectedDestination.id
+                : '20000000-0000-0000-0000-000000000001';
+
+              try {
+                const assignRes = await api.surplus.assignDestination(
+                  backendListing.id,
+                  recipientUuid,
+                  `Dialokasikan ke: ${newReport.selectedDestination.name || 'Dapur Sosial Barokah Matraman'}`
+                );
+                const journey = assignRes?.data || assignRes;
+
+                // Sync local report IDs with backend UUIDs to prevent duplication
+                const curUsers = getUserReports();
+                const idx = curUsers.findIndex(r => r.id === newReport.id);
+                if (idx !== -1) {
+                  curUsers[idx].id = backendListing.id;
+                  curUsers[idx].journeyId = journey?.id || backendListing.id;
+                  curUsers[idx].journeyStatus = 'MATCHED';
+                  localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(curUsers));
+                  dispatchStorageEvent();
+                }
+              } catch (assignErr) {
+                console.warn('[REPLATE Backend API] Assign destination warning:', assignErr);
+              }
+            }
+            await syncBackendSurplusToLocal();
+          } catch (err) {
+            console.warn('[REPLATE Backend API] Surplus creation warning:', err);
+          }
+        })();
+      }
     }
 
     return newReport;
   } catch (err) {
     console.error('[REPLATE Storage] Error saving report:', err);
     throw err;
+  }
+}
+
+/**
+ * Ensures an active auth token for background API requests
+ */
+export async function ensureApiToken() {
+  if (api.getAuthToken()) return true;
+  try {
+    const session = getCurrentUser();
+    const email = session?.role === 'supplier' || session?.email === 'catering@replate.id'
+      ? 'supplier@replate.id'
+      : (session?.email || 'supplier@replate.id');
+    const pw = session?.role === 'admin' ? 'admin123' : (session?.role === 'mitra' ? 'mitra123' : 'supplier123');
+    await api.auth.login(email, pw);
+    return Boolean(api.getAuthToken());
+  } catch {
+    return false;
   }
 }
 
@@ -260,6 +323,27 @@ export function updateReport(id, updates) {
       // Async sync to Supabase Cloud in background (real browser only)
       if (isRealBrowserEnvironment()) {
         syncReportToSupabase(userReports[uIdx]).catch(() => {});
+
+        // Async sync to NestJS Backend API if enabled
+        if (api.isLiveApiEnabled()) {
+          (async () => {
+            try {
+              await ensureApiToken();
+              const journeyId = userReports[uIdx].journeyId || (userReports[uIdx].journeys?.[0]?.id) || id;
+
+              if (updates.journeyStatus === 'RECEIVED') {
+                await api.journeys.confirmReceipt(journeyId, updates.actualReceivedKg || userReports[uIdx].quantity, updates.note);
+              } else if (updates.journeyStatus === 'CANCELLED') {
+                await api.journeys.cancel(journeyId, updates.cancellationReason || 'Cancelled by user');
+              } else if (updates.journeyStatus) {
+                await api.journeys.advanceStatus(journeyId, updates.journeyStatus, updates.note);
+              }
+              await syncBackendSurplusToLocal();
+            } catch (err) {
+              console.warn('[REPLATE Backend API] Journey status update warning:', err);
+            }
+          })();
+        }
       }
 
       return userReports[uIdx];
@@ -895,6 +979,19 @@ export function loginUser(identifier, password) {
 
     localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
     dispatchAuthEvent(sessionUser);
+
+    // Authenticate with live NestJS Backend API if running in real browser
+    if (isRealBrowserEnvironment() && api.isLiveApiEnabled()) {
+      const backendEmail = matchedUser.role === 'supplier' ? 'supplier@replate.id' : matchedUser.email;
+      api.auth.login(backendEmail, matchedUser.password)
+        .then(() => {
+          syncBackendSurplusToLocal();
+        })
+        .catch((err) => {
+          console.warn('[REPLATE Backend Auth] Background login warning:', err?.message || err);
+        });
+    }
+
     return { success: true, user: sessionUser };
   } catch (err) {
     console.error('[REPLATE Storage] Error logging in:', err);
@@ -908,6 +1005,9 @@ export function loginUser(identifier, password) {
 export function logoutUser() {
   try {
     localStorage.removeItem(STORAGE_KEYS.USER_SESSION);
+    if (isRealBrowserEnvironment()) {
+      api.auth.logout().catch(() => {});
+    }
     dispatchAuthEvent(null);
     return true;
   } catch (err) {
@@ -1166,51 +1266,54 @@ export async function initSupabaseCloudSync() {
   if (!isRealBrowserEnvironment()) return () => {};
 
   try {
-    // 1. Fetch remote surplus reports and merge with local user reports
-    const remoteReports = await fetchRemoteSurplusReports();
-    if (remoteReports.length > 0) {
-      const localUsers = getUserReports();
-      const reportMap = new Map();
-
-      for (const r of remoteReports) {
-        reportMap.set(r.id, r);
-      }
-      for (const l of localUsers) {
-        const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id.startsWith(prefix));
-        if (isTestId) continue;
-        const existing = reportMap.get(l.id);
-        if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
-          reportMap.set(l.id, l);
-        }
-      }
-
-      const merged = Array.from(reportMap.values());
-      localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(merged));
+    // 1. Primary Cloud Sync: Fetch immediately from NestJS Backend API on Render
+    if (api.isLiveApiEnabled()) {
+      syncBackendSurplusToLocal().catch(() => {});
     }
 
-    // 2. Fetch remote emergency requests and merge
-    const remoteRequests = await fetchRemoteEmergencyRequests();
-    if (remoteRequests.length > 0) {
-      const localReqs = getEmergencyRequests();
-      const reqMap = new Map();
-
-      for (const req of remoteRequests) {
-        reqMap.set(req.id, req);
-      }
-      for (const l of localReqs) {
-        const existing = reqMap.get(l.id);
-        if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
-          reqMap.set(l.id, l);
+    // 2. Secondary/legacy Supabase table check in non-blocking background task
+    (async () => {
+      try {
+        const remoteReports = await fetchRemoteSurplusReports().catch(() => []);
+        if (remoteReports && remoteReports.length > 0) {
+          const localUsers = getUserReports();
+          const reportMap = new Map();
+          for (const r of remoteReports) reportMap.set(r.id, r);
+          for (const l of localUsers) {
+            const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id?.startsWith(prefix));
+            if (isTestId) continue;
+            const existing = reportMap.get(l.id);
+            if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
+              reportMap.set(l.id, l);
+            }
+          }
+          localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(Array.from(reportMap.values())));
+          dispatchStorageEvent();
         }
-      }
+      } catch {}
+    })();
 
-      const mergedReqs = Array.from(reqMap.values());
-      localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(mergedReqs));
-    }
+    // 3. Fetch remote emergency requests and merge in non-blocking background task
+    (async () => {
+      try {
+        const remoteRequests = await fetchRemoteEmergencyRequests().catch(() => []);
+        if (remoteRequests && remoteRequests.length > 0) {
+          const localReqs = getEmergencyRequests();
+          const reqMap = new Map();
+          for (const req of remoteRequests) reqMap.set(req.id, req);
+          for (const l of localReqs) {
+            const existing = reqMap.get(l.id);
+            if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
+              reqMap.set(l.id, l);
+            }
+          }
+          localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(Array.from(reqMap.values())));
+          dispatchStorageEvent();
+        }
+      } catch {}
+    })();
 
-    dispatchStorageEvent();
-
-    // 3. Setup live Realtime listener
+    // 4. Setup live Realtime listener
     const cleanup = setupSupabaseRealtimeSubscriptions(
       // On remote surplus change
       (payload) => {
@@ -1268,5 +1371,62 @@ export async function initSupabaseCloudSync() {
     return () => {};
   }
 }
+
+/**
+ * Synchronize surplus listings with live NestJS Backend API on Render
+ * Pulls all surplus listings from the backend and merges into local user reports
+ */
+export async function syncBackendSurplusToLocal() {
+  if (!isRealBrowserEnvironment()) return [];
+  if (!api.isLiveApiEnabled()) return [];
+
+  try {
+    // 1. Ensure authentication token. If absent, authenticate with active session or default demo supplier
+    await ensureApiToken();
+    if (!api.getAuthToken()) return [];
+
+    // 2. Fetch all surplus listings from live NestJS backend
+    const res = await api.surplus.findAll().catch(() => null);
+    const remoteListings = Array.isArray(res) ? res : (res?.data || []);
+    if (!remoteListings || remoteListings.length === 0) return [];
+
+    // 3. Map backend DTO to frontend report objects
+    const mappedReports = remoteListings.map(mapBackendListingToReport);
+    const localUsers = getUserReports();
+    const reportMap = new Map();
+
+    for (const r of mappedReports) {
+      reportMap.set(r.id, r);
+    }
+    for (const l of localUsers) {
+      const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id?.startsWith(prefix));
+      if (isTestId) continue;
+      const existing = reportMap.get(l.id);
+      if (!existing) {
+        // Prevent duplicate item if already saved to backend under a new UUID
+        const isDuplicateOfRemote = mappedReports.some(r =>
+          r.foodName === l.foodName &&
+          Math.abs(new Date(r.createdAt || 0).getTime() - new Date(l.createdAt || 0).getTime()) < 300000
+        );
+        if (!isDuplicateOfRemote) {
+          reportMap.set(l.id, l);
+        }
+      } else {
+        if (new Date(l.updatedAt || 0) > new Date(existing.updatedAt || 0) && l.journeyStatus !== existing.journeyStatus) {
+          reportMap.set(l.id, { ...existing, ...l });
+        }
+      }
+    }
+
+    const merged = Array.from(reportMap.values());
+    localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(merged));
+    dispatchStorageEvent();
+    return merged;
+  } catch (err) {
+    console.warn('[REPLATE Backend Sync] Error during backend surplus sync:', err);
+    return [];
+  }
+}
+
 
 

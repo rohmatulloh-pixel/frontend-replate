@@ -12,7 +12,7 @@ import Impact from './pages/Impact';
 import Insights from './pages/Insights';
 import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
-import { saveReport, getCurrentUser, initSupabaseCloudSync } from './utils/storage';
+import { saveReport, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
 
 const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency'];
@@ -58,10 +58,21 @@ export default function App() {
     };
   }, []);
 
-  // Initialize Supabase Cloud Realtime Sync & Cloud Fetch
+  // Initialize Supabase Cloud Realtime Sync & Backend Polling for Multi-Device Collaboration
   useEffect(() => {
+    // Instant sync with live NestJS backend at second 0
+    syncBackendSurplusToLocal().catch(() => {});
+
+    // Realtime listener cleanup handler
     const cleanup = initSupabaseCloudSync();
+
+    // Auto-sync from live NestJS backend every 10 seconds so Device 1 & Device 2 stay in sync
+    const interval = setInterval(() => {
+      syncBackendSurplusToLocal().catch(() => {});
+    }, 10000);
+
     return () => {
+      clearInterval(interval);
       if (typeof cleanup === 'function') cleanup();
     };
   }, []);
