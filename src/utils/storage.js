@@ -1176,6 +1176,8 @@ export async function initSupabaseCloudSync() {
         reportMap.set(r.id, r);
       }
       for (const l of localUsers) {
+        const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id.startsWith(prefix));
+        if (isTestId) continue;
         const existing = reportMap.get(l.id);
         if (!existing || new Date(l.updatedAt || l.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
           reportMap.set(l.id, l);
