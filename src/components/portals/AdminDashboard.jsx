@@ -128,7 +128,7 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-display font-black text-brand-900">
-            {kpis.totalVolumeKg} <span className="text-sm text-slate-500 font-sans font-medium">kg</span>
+            {(kpis.totalReportedKg ?? kpis.totalVolumeKg ?? 0).toFixed(1)} <span className="text-sm text-slate-500 font-sans font-medium">kg</span>
           </div>
           <p className="text-[11px] font-sans text-slate-500 font-semibold">
             {isId ? `${reports.length} transaksi surplus tercatat` : `${reports.length} surplus records total`}
@@ -145,10 +145,12 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-display font-black text-emerald-800">
-            {kpis.rescueRatePercent}%
+            {kpis.successRate ?? 0}%
           </div>
           <p className="text-[11px] font-sans text-slate-500 font-semibold">
-            {isId ? `${kpis.deliveredVolumeKg} kg diterima fisik di mitra` : `${kpis.deliveredVolumeKg} kg successfully received`}
+            {isId
+              ? `${(kpis.totalRescuedKg ?? kpis.deliveredVolumeKg ?? 0).toFixed(1)} kg diterima fisik di mitra`
+              : `${(kpis.totalRescuedKg ?? kpis.deliveredVolumeKg ?? 0).toFixed(1)} kg successfully received`}
           </p>
         </div>
 
@@ -162,7 +164,7 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-display font-black text-brand-900">
-            {environmentalSecondary.co2eAvoidedKg} <span className="text-sm text-slate-500 font-sans font-medium">kg CO₂e</span>
+            {(environmentalSecondary?.co2eAvoidedKg ?? 0).toFixed(1)} <span className="text-sm text-slate-500 font-sans font-medium">kg CO₂e</span>
           </div>
           <p className="text-[11px] font-sans text-slate-500 font-semibold">
             {isId ? 'Pengalihan dari landfill / TPA' : 'Diverted from urban landfills'}
@@ -179,7 +181,7 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-display font-black text-brand-900">
-            {formatRupiah(economics.economicBenefitRp)}
+            {formatRupiah(economics.offeredValueIdr || economics.completedCommercialValueIdr || economics.economicBenefitRp || 0)}
           </div>
           <p className="text-[11px] font-sans text-slate-500 font-semibold">
             {isId ? 'Penghematan anggaran sosial' : 'Food value preserved'}
@@ -201,31 +203,41 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-1">
             <span className="text-xs font-display font-extrabold text-slate-500 uppercase block">1. Dilaporkan</span>
-            <span className="text-2xl font-display font-black text-brand-900 block">{statusOverview.REPORTED || 0}</span>
+            <span className="text-2xl font-display font-black text-brand-900 block">
+              {reports.filter(r => r.journeyStatus === 'REPORTED').length}
+            </span>
             <span className="text-[11px] text-slate-400 font-sans font-medium">Batch Masuk</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-center space-y-1">
             <span className="text-xs font-display font-extrabold text-teal-800 uppercase block">2. Dinilai Safety</span>
-            <span className="text-2xl font-display font-black text-teal-950 block">{statusOverview.ASSESSED || 0}</span>
+            <span className="text-2xl font-display font-black text-teal-950 block">
+              {reports.filter(r => ['ASSESSED', 'ROUTE_SELECTED', 'SAFETY_SCREENED', 'SAFETY_REASSESSED'].includes(r.journeyStatus)).length}
+            </span>
             <span className="text-[11px] text-teal-700 font-sans font-medium">Lolos Evaluasi</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-center space-y-1">
             <span className="text-xs font-display font-extrabold text-sky-800 uppercase block">3. Dijodohkan</span>
-            <span className="text-2xl font-display font-black text-sky-950 block">{statusOverview.MATCHED || 0}</span>
+            <span className="text-2xl font-display font-black text-sky-950 block">
+              {reports.filter(r => r.journeyStatus === 'MATCHED').length}
+            </span>
             <span className="text-[11px] text-sky-700 font-sans font-medium">Mitra Siap</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-1">
             <span className="text-xs font-display font-extrabold text-amber-800 uppercase block">4. Sedang Diantar</span>
-            <span className="text-2xl font-display font-black text-amber-950 block">{statusOverview.RESCUE_INITIATED || 0}</span>
+            <span className="text-2xl font-display font-black text-amber-950 block">
+              {reports.filter(r => r.journeyStatus === 'RESCUE_INITIATED').length}
+            </span>
             <span className="text-[11px] text-amber-700 font-sans font-medium">Kurir Bergerak</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-1 col-span-2 sm:col-span-1">
             <span className="text-xs font-display font-extrabold text-emerald-800 uppercase block">5. Sukses Diterima</span>
-            <span className="text-2xl font-display font-black text-emerald-950 block">{statusOverview.RECEIVED || 0}</span>
+            <span className="text-2xl font-display font-black text-emerald-950 block">
+              {reports.filter(r => r.journeyStatus === 'RECEIVED').length}
+            </span>
             <span className="text-[11px] text-emerald-700 font-sans font-medium">Pangan Selamat</span>
           </div>
         </div>

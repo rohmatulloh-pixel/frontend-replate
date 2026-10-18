@@ -29,7 +29,9 @@ export const STORAGE_KEYS = {
   DEMO_FLAG: 'replate_demo_loaded_v1',
   USER_SESSION: 'replate_user_session_v1',
   REGISTERED_USERS: 'replate_registered_users_v1',
-  EMERGENCY_REQUESTS: 'replate_emergency_requests_v1'
+  EMERGENCY_REQUESTS: 'replate_emergency_requests_v1',
+  DELETED_REPORT_IDS: 'replate_deleted_report_ids_v1',
+  DELETED_EMERGENCY_IDS: 'replate_deleted_emergency_ids_v1'
 };
 
 // Custom event to sync components upon storage updates
@@ -50,6 +52,80 @@ function isRealBrowserEnvironment() {
     return false;
   }
   return true;
+}
+
+/**
+ * Retrieve set of permanently deleted report IDs (Tombstones) to prevent cloud re-download (resurrection)
+ */
+export function getDeletedReportIds() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_REPORT_IDS);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Record a report ID as permanently deleted in local tombstone index
+ */
+export function recordDeletedReportId(id) {
+  if (!id || (typeof window === 'undefined' && typeof localStorage === 'undefined')) return;
+  try {
+    const set = getDeletedReportIds();
+    set.add(id);
+    localStorage.setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[REPLATE Storage] Error recording deleted report ID:', err);
+  }
+}
+
+/**
+ * Check if a report ID has been marked as deleted
+ */
+export function isReportDeleted(id) {
+  if (!id) return false;
+  return getDeletedReportIds().has(id);
+}
+
+/**
+ * Retrieve set of permanently deleted emergency request IDs (Tombstones)
+ */
+export function getDeletedEmergencyIds() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Record an emergency request ID as permanently deleted in local tombstone index
+ */
+export function recordDeletedEmergencyId(id) {
+  if (!id || (typeof window === 'undefined' && typeof localStorage === 'undefined')) return;
+  try {
+    const set = getDeletedEmergencyIds();
+    set.add(id);
+    localStorage.setItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[REPLATE Storage] Error recording deleted emergency ID:', err);
+  }
+}
+
+/**
+ * Check if an emergency request ID has been marked as deleted
+ */
+export function isEmergencyDeleted(id) {
+  if (!id) return false;
+  return getDeletedEmergencyIds().has(id);
 }
 
 /**
@@ -505,24 +581,34 @@ export function updateJourneyStatus(id, newStatus, note = '', extraPayload = {},
 export function deleteReport(id) {
   migrateLegacyStorage();
   try {
+    recordDeletedReportId(id);
+
     const userReports = getUserReports();
     const uFiltered = userReports.filter(r => r.id !== id);
+    let deleted = false;
+
     if (uFiltered.length !== userReports.length) {
       localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(uFiltered));
-      dispatchStorageEvent();
-
-      if (isRealBrowserEnvironment()) {
-        deleteReportFromSupabase(id).catch(() => {});
-      }
-
-      return true;
+      deleted = true;
     }
 
     const demoReports = getDemoReports();
     const dFiltered = demoReports.filter(r => r.id !== id);
     if (dFiltered.length !== demoReports.length) {
       localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(dFiltered));
+      deleted = true;
+    }
+
+    if (deleted) {
       dispatchStorageEvent();
+
+      if (isRealBrowserEnvironment()) {
+        deleteReportFromSupabase(id).catch(() => {});
+        if (api.isLiveApiEnabled()) {
+          api.surplus?.delete?.(id)?.catch(() => {});
+        }
+      }
+
       return true;
     }
 
@@ -542,6 +628,8 @@ export function clearAllData() {
     localStorage.removeItem(STORAGE_KEYS.DEMO_REPORTS);
     localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
     localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+    localStorage.removeItem(STORAGE_KEYS.DELETED_REPORT_IDS);
+    localStorage.removeItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
     dispatchStorageEvent();
     return true;
   } catch (err) {
@@ -782,6 +870,21 @@ export function loadDemoData() {
     const existingDemo = getDemoReports();
     const demoMap = new Map();
 
+    // Allow re-loading demo items if previously deleted
+    try {
+      const delSet = getDeletedReportIds();
+      let changed = false;
+      for (const c of curated) {
+        if (delSet.has(c.id)) {
+          delSet.delete(c.id);
+          changed = true;
+        }
+      }
+      if (changed && typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(delSet)));
+      }
+    } catch {}
+
     for (const d of existingDemo) {
       demoMap.set(d.id, d);
     }
@@ -822,6 +925,22 @@ export function resetDemoData() {
   migrateLegacyStorage();
   try {
     const freshCurated = getCuratedDemoReports();
+
+    // Allow re-resetting demo items if previously deleted
+    try {
+      const delSet = getDeletedReportIds();
+      let changed = false;
+      for (const c of freshCurated) {
+        if (delSet.has(c.id)) {
+          delSet.delete(c.id);
+          changed = true;
+        }
+      }
+      if (changed && typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(delSet)));
+      }
+    } catch {}
+
     localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(freshCurated));
     localStorage.setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
 
@@ -1342,6 +1461,7 @@ export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
  * Delete emergency request from storage
  */
 export function deleteEmergencyRequest(id) {
+  recordDeletedEmergencyId(id);
   const existing = getEmergencyRequests();
   const filtered = existing.filter(r => r.id !== id);
   if (filtered.length !== existing.length) {
@@ -1441,6 +1561,7 @@ export async function initSupabaseCloudSync() {
       try {
         const remoteReports = await fetchRemoteSurplusReports().catch(() => []);
         const localUsers = getUserReports();
+        const deletedIds = getDeletedReportIds();
         const remoteMap = new Map();
         for (const r of (remoteReports || [])) {
           if (r?.id) remoteMap.set(r.id, r);
@@ -1449,6 +1570,11 @@ export async function initSupabaseCloudSync() {
         let localChanged = false;
         // Merge remote items into local
         for (const r of (remoteReports || [])) {
+          // If deleted locally, never resurrect into localStorage!
+          if (deletedIds.has(r.id)) {
+            deleteReportFromSupabase(r.id).catch(() => {});
+            continue;
+          }
           const lIdx = localUsers.findIndex(l => l.id === r.id);
           if (lIdx === -1) {
             localUsers.unshift(r);
@@ -1466,7 +1592,7 @@ export async function initSupabaseCloudSync() {
         // Upload any local reports that are not yet on Supabase Cloud
         for (const l of localUsers) {
           const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id?.startsWith(prefix));
-          if (isTestId || l.isDemo) continue;
+          if (isTestId || l.isDemo || deletedIds.has(l.id)) continue;
           if (!remoteMap.has(l.id)) {
             syncReportToSupabase(l).catch(() => {});
           }
@@ -1486,6 +1612,7 @@ export async function initSupabaseCloudSync() {
       try {
         const remoteRequests = await fetchRemoteEmergencyRequests().catch(() => []);
         const localReqs = getEmergencyRequests();
+        const deletedEmgIds = getDeletedEmergencyIds();
         const remoteReqMap = new Map();
         for (const req of (remoteRequests || [])) {
           if (req?.id) remoteReqMap.set(req.id, req);
@@ -1494,6 +1621,11 @@ export async function initSupabaseCloudSync() {
         let reqsChanged = false;
         // Merge remote requests into local
         for (const req of (remoteRequests || [])) {
+          // If deleted locally, never resurrect into localStorage!
+          if (deletedEmgIds.has(req.id)) {
+            deleteEmergencyRequestFromSupabase(req.id).catch(() => {});
+            continue;
+          }
           const lIdx = localReqs.findIndex(l => l.id === req.id);
           if (lIdx === -1) {
             localReqs.unshift(req);
@@ -1510,7 +1642,7 @@ export async function initSupabaseCloudSync() {
 
         // Upload any local non-demo requests to Supabase Cloud
         for (const l of localReqs) {
-          if (l.isDemo) continue;
+          if (l.isDemo || deletedEmgIds.has(l.id)) continue;
           if (!remoteReqMap.has(l.id)) {
             syncEmergencyRequestToSupabase(l).catch(() => {});
           }
@@ -1569,10 +1701,12 @@ export async function initSupabaseCloudSync() {
           const userReports = getUserReports();
 
           if (eventType === 'DELETE' && oldRow?.id) {
+            recordDeletedReportId(oldRow.id);
             const filtered = userReports.filter(r => r.id !== oldRow.id);
             localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(filtered));
           } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
             const incoming = mapSupabaseRowToReport(newRow);
+            if (isReportDeleted(incoming.id)) return;
             const idx = userReports.findIndex(r => r.id === incoming.id);
             if (idx !== -1) {
               userReports[idx] = incoming;
@@ -1593,10 +1727,12 @@ export async function initSupabaseCloudSync() {
           const reqs = getEmergencyRequests();
 
           if (eventType === 'DELETE' && oldRow?.id) {
+            recordDeletedEmergencyId(oldRow.id);
             const filtered = reqs.filter(r => r.id !== oldRow.id);
             localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
           } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
             const incoming = mapRowToEmergencyRequest(newRow);
+            if (isEmergencyDeleted(incoming.id)) return;
             const idx = reqs.findIndex(r => r.id === incoming.id);
             if (idx !== -1) {
               reqs[idx] = incoming;
