@@ -13,6 +13,7 @@ import Insights from './pages/Insights';
 import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
 import { saveReport, saveReportToBackend, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
+import { getActiveLanguage } from './utils/i18n';
 import api from './services/api';
 
 const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency'];
