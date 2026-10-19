@@ -71,10 +71,10 @@ export default function LoginModal({
   const isId = lang === 'id';
 
   // 1-Tap Instant Login for Prototype Roles (Zero Friction)
-  const handleQuickLogin = (roleKey) => {
+  const handleQuickLogin = async (roleKey) => {
     const user = DEMO_USERS[roleKey];
     if (user) {
-      const result = loginUser(user.username, user.password);
+      const result = await loginUserAsync(user.username, user.password);
       if (result.success) {
         setError('');
         if (onSuccess) onSuccess();

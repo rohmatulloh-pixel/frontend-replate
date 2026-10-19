@@ -12,8 +12,8 @@ import Impact from './pages/Impact';
 import Insights from './pages/Insights';
 import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
-import { saveReport, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
-import { getActiveLanguage } from './utils/i18n';
+import { saveReport, saveReportToBackend, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
+import api from './services/api';
 
 const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency'];
 
@@ -98,17 +98,27 @@ export default function App() {
   };
 
   // Handle destination selection from Assessment
-  const handleDestinationSelected = (fullReportWithDestination) => {
-    const saved = saveReport(fullReportWithDestination);
-    setPendingReport(null);
-    if (saved?.id) {
-      setSelectedJourneyId(saved.id);
+  const handleDestinationSelected = async (fullReportWithDestination) => {
+    try {
+      let saved;
+      if (api.isLiveApiEnabled()) {
+        saved = await saveReportToBackend(fullReportWithDestination);
+      } else {
+        saved = saveReport(fullReportWithDestination);
+      }
+      setPendingReport(null);
+      if (saved?.id) {
+        setSelectedJourneyId(saved.journeyId || saved.id);
+      }
+      setActivePage('journeys');
+      if (typeof window !== 'undefined') {
+        window.location.hash = 'journeys';
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('[REPLATE Backend API] Gagal menyimpan surplus:', err);
+      alert(`Gagal mengirim laporan surplus ke Backend API Rakha: ${err.message || 'Terjadi kesalahan jaringan'}.\n\nData Anda tetap tersimpan di formulir ini.`);
     }
-    setActivePage('journeys');
-    if (typeof window !== 'undefined') {
-      window.location.hash = 'journeys';
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Handle navigation

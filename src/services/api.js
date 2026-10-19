@@ -4,8 +4,28 @@
  * with graceful fallback to local-first / Supabase storage via feature toggle.
  */
 
-export const USE_BACKEND_API = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_USE_BACKEND_API !== 'false') : false;
-export const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'https://replate-backend-roo2.onrender.com/api/v1';
+export function normalizeApiUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return 'https://replate-backend-roo2.onrender.com/api/v1';
+  }
+  let url = rawUrl.trim().replace(/\/+$/, '');
+  if (!url.endsWith('/api/v1')) {
+    if (url.endsWith('/api')) {
+      url = `${url}/v1`;
+    } else {
+      url = `${url}/api/v1`;
+    }
+  }
+  return url;
+}
+
+export const USE_BACKEND_API = typeof import.meta !== 'undefined'
+  ? (String(import.meta.env?.VITE_USE_BACKEND_API).toLowerCase() === 'true' || import.meta.env?.VITE_USE_BACKEND_API === true || import.meta.env?.VITE_USE_BACKEND_API === '1')
+  : false;
+
+export const BASE_URL = normalizeApiUrl(
+  typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_BASE_URL : null
+);
 
 let authToken = typeof localStorage !== 'undefined' ? localStorage.getItem('replate_access_token') : null;
 
@@ -23,17 +43,28 @@ export const setAuthToken = (token) => {
 export const getAuthToken = () => authToken;
 
 async function request(endpoint, options = {}) {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const fullUrl = `${BASE_URL}${cleanEndpoint}`;
+
   const headers = {
     'Content-Type': 'application/json',
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     ...options.headers,
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include', // Sends HttpOnly cookie for refresh token
-  });
+  let response;
+  try {
+    response = await fetch(fullUrl, {
+      ...options,
+      headers,
+      credentials: 'include', // Sends HttpOnly cookie for refresh token
+    });
+  } catch (netErr) {
+    const error = new Error(`Gagal terhubung ke backend API (${fullUrl}): ${netErr.message || 'Koneksi jaringan terputus atau server sedang cold-start'}`);
+    error.status = 0;
+    error.isNetworkError = true;
+    throw error;
+  }
 
   // Handle token expired (401)
   if (response.status === 401 && !options._retry && !endpoint.includes('/auth/login')) {
@@ -44,7 +75,8 @@ async function request(endpoint, options = {}) {
       });
       if (refreshResponse.ok) {
         const refreshData = await refreshResponse.json();
-        setAuthToken(refreshData.data?.accessToken || refreshData.accessToken);
+        const newToken = refreshData.data?.accessToken || refreshData.accessToken;
+        setAuthToken(newToken);
         options._retry = true;
         return request(endpoint, options);
       }
@@ -56,9 +88,10 @@ async function request(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const error = new Error(data.message || 'Terjadi kesalahan pada permintaan API');
+    const errorMsg = data.message || (Array.isArray(data.message) ? data.message.join(', ') : 'Terjadi kesalahan pada permintaan API');
+    const error = new Error(errorMsg);
     error.status = response.status;
-    error.details = data.details;
+    error.details = data.details || data.error;
     throw error;
   }
 
@@ -73,13 +106,11 @@ export const api = {
   isLiveApiEnabled: () => USE_BACKEND_API,
   getBaseUrl: () => BASE_URL,
 
-  // Health / Connection check
+  // Health / Connection check using public endpoint
   checkHealth: async () => {
     try {
-      const res = await fetch(`${BASE_URL}/auth/me`, {
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
-      });
-      return res.status !== 502 && res.status !== 503;
+      const res = await fetch(`${BASE_URL}/health`);
+      return res.ok;
     } catch {
       return false;
     }
@@ -136,6 +167,33 @@ export const api = {
   // --- 3. Recipient Capacities ---
   recipients: {
     getMyCapacity: () => request('/recipients/my-capacity'),
+    findAll: () => request('/recipients'),
+    findOne: (id) => request(`/recipients/${id}`),
+  },
+
+  // --- 4. Emergency Requests ---
+  emergency: {
+    create: (payload) =>
+      request('/emergency-requests', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    findAll: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return request(`/emergency-requests${qs ? `?${qs}` : ''}`);
+    },
+    findOne: (id) => request(`/emergency-requests/${id}`),
+    updateStatus: (id, statusData) =>
+      request(`/emergency-requests/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(statusData),
+      }),
+    allocate: (id, surplusId, surplusName) =>
+      request(`/emergency-requests/${id}/allocate`, {
+        method: 'POST',
+        body: JSON.stringify({ surplusId, surplusName }),
+      }),
+    delete: (id) => request(`/emergency-requests/${id}`, { method: 'DELETE' }),
   },
 
   // --- 4. Rescue Journeys & Doorstep Logistics ---

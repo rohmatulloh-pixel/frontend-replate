@@ -316,46 +316,9 @@ export function saveReport(report) {
 
       // Async sync to NestJS Backend API if enabled
       if (api.isLiveApiEnabled()) {
-        (async () => {
-          try {
-            await ensureApiToken();
-            const dto = mapReportToBackendDto(newReport);
-            const createdRes = await api.surplus.create(dto);
-            const backendListing = createdRes?.data || createdRes;
-
-            // If a destination was selected, immediately assign it to trigger backend Journey creation
-            if (backendListing?.id && newReport.selectedDestination) {
-              const recipientUuid = (typeof newReport.selectedDestination.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(newReport.selectedDestination.id))
-                ? newReport.selectedDestination.id
-                : '20000000-0000-0000-0000-000000000001';
-
-              try {
-                const assignRes = await api.surplus.assignDestination(
-                  backendListing.id,
-                  recipientUuid,
-                  `Dialokasikan ke: ${newReport.selectedDestination.name || 'Dapur Sosial Barokah Matraman'}`
-                );
-                const journey = assignRes?.data || assignRes;
-
-                // Sync local report IDs with backend UUIDs to prevent duplication
-                const curUsers = getUserReports();
-                const idx = curUsers.findIndex(r => r.id === newReport.id);
-                if (idx !== -1) {
-                  curUsers[idx].id = backendListing.id;
-                  curUsers[idx].journeyId = journey?.id || backendListing.id;
-                  curUsers[idx].journeyStatus = 'MATCHED';
-                  localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(curUsers));
-                  dispatchStorageEvent();
-                }
-              } catch (assignErr) {
-                console.warn('[REPLATE Backend API] Assign destination warning:', assignErr);
-              }
-            }
-            await syncBackendSurplusToLocal();
-          } catch (err) {
-            console.warn('[REPLATE Backend API] Surplus creation warning:', err);
-          }
-        })();
+        saveReportToBackend(newReport).catch((err) => {
+          console.warn('[REPLATE Backend API] Background surplus creation warning:', err);
+        });
       }
     }
 
@@ -367,19 +330,96 @@ export function saveReport(report) {
 }
 
 /**
+ * Direct async submission to NestJS Backend API with strict error propagation
+ */
+export async function saveReportToBackend(report) {
+  const gateResult = evaluateFoodSafetyGate(report);
+  const isHumanRoute = !report.recommendedRoute || ['REDISTRIBUTE', 'PROCESS', 'HUMAN'].includes(report.recommendedRoute);
+  if (gateResult.status === 'REJECT' && isHumanRoute && !report.selectedDestination?.preferredRoutes?.includes('ORGANIC')) {
+    throw new Error('Makanan berstatus REJECT tidak dapat disalurkan untuk konsumsi manusia.');
+  }
+
+  // If live backend API is disabled, fall back to synchronous local saveReport
+  if (!api.isLiveApiEnabled()) {
+    return saveReport(report);
+  }
+
+  await ensureApiToken();
+  if (!api.getAuthToken()) {
+    throw new Error('Autentikasi gagal. Sesi masuk Anda ke backend telah kedaluwarsa.');
+  }
+
+  const dto = mapReportToBackendDto(report);
+  const createdRes = await api.surplus.create(dto);
+  const backendListing = createdRes?.data || createdRes;
+
+  if (!backendListing?.id) {
+    throw new Error('Gagal menerima konfirmasi ID listing dari Backend API.');
+  }
+
+  let finalJourneyId = backendListing.id;
+  let finalStatus = 'REPORTED';
+
+  if (report.selectedDestination) {
+    const recipientUuid = (typeof report.selectedDestination.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(report.selectedDestination.id))
+      ? report.selectedDestination.id
+      : '20000000-0000-0000-0000-000000000001';
+
+    try {
+      const assignRes = await api.surplus.assignDestination(
+        backendListing.id,
+        recipientUuid,
+        `Dialokasikan ke: ${report.selectedDestination.name || 'Dapur Sosial Barokah Matraman'}`
+      );
+      const journey = assignRes?.data || assignRes;
+      if (journey?.id) {
+        finalJourneyId = journey.id;
+        finalStatus = 'MATCHED';
+      }
+    } catch (assignErr) {
+      console.warn('[REPLATE Backend API] Assign destination warning:', assignErr);
+    }
+  }
+
+  // Pull all backend records to update local cache
+  await syncBackendSurplusToLocal().catch(() => {});
+
+  const newReport = {
+    ...report,
+    id: backendListing.id,
+    journeyId: finalJourneyId,
+    journeyStatus: finalStatus,
+    foodSafetyGate: gateResult,
+    isDemo: false
+  };
+
+  return newReport;
+}
+
+/**
  * Ensures an active auth token for background API requests
  */
 export async function ensureApiToken() {
   if (api.getAuthToken()) return true;
   try {
     const session = getCurrentUser();
-    const email = session?.role === 'supplier' || session?.email === 'catering@replate.id'
-      ? 'supplier@replate.id'
-      : (session?.email || 'supplier@replate.id');
-    const pw = session?.role === 'admin' ? 'admin123' : (session?.role === 'mitra' ? 'mitra123' : 'supplier123');
+    let email = 'supplier@replate.id';
+    let pw = 'supplier123';
+
+    if (session?.role === 'admin') {
+      email = 'admin@replate.id';
+      pw = 'admin123';
+    } else if (session?.role === 'mitra') {
+      email = 'mitra@replate.id';
+      pw = 'mitra123';
+    } else if (session?.email && session.email.includes('@replate.id')) {
+      email = session.email;
+    }
+
     await api.auth.login(email, pw);
     return Boolean(api.getAuthToken());
-  } catch {
+  } catch (err) {
+    console.warn('[REPLATE Backend] ensureApiToken warning:', err);
     return false;
   }
 }
@@ -1235,10 +1275,56 @@ export function loginUser(identifier, password) {
   }
 }
 
-/**
- * Asynchronously log in a user with Supabase Cloud real-time check fallback
- */
 export async function loginUserAsync(identifier, password) {
+  const cleanId = String(identifier || '').trim().toLowerCase();
+  const cleanPw = String(password || '').trim();
+
+  // 1. If live NestJS Backend API is enabled, authenticate with server first
+  if (isRealBrowserEnvironment() && api.isLiveApiEnabled()) {
+    try {
+      const emailMap = {
+        'admin': 'admin@replate.id',
+        'supplier': 'supplier@replate.id',
+        'mitra': 'mitra@replate.id',
+      };
+      const emailToUse = emailMap[cleanId] || cleanId;
+      const authData = await api.auth.login(emailToUse, cleanPw);
+      const backendUser = authData?.user || authData;
+      const role = backendUser?.role ? backendUser.role.toLowerCase() : (cleanId.includes('admin') ? 'admin' : (cleanId.includes('mitra') ? 'mitra' : 'supplier'));
+
+      const sessionUser = {
+        id: backendUser?.id || `usr-${Date.now()}`,
+        username: cleanId,
+        email: backendUser?.email || emailToUse,
+        name: backendUser?.fullName || backendUser?.name || 'Pengguna REPLATE',
+        organization: backendUser?.organization?.name || 'Organisasi Terdaftar',
+        role: role,
+        loginAt: new Date().toISOString()
+      };
+
+      localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
+      localStorage.setItem('replate_active_role', role);
+      dispatchAuthEvent(sessionUser);
+
+      // Sync backend surplus data to local
+      await syncBackendSurplusToLocal().catch(() => {});
+
+      return { success: true, user: sessionUser };
+    } catch (err) {
+      console.warn('[REPLATE Backend Auth] Direct backend login failed:', err);
+      // If error is 401 or invalid credentials, return explicit error
+      if (err.status === 401 || err.message?.toLowerCase().includes('tidak sesuai')) {
+        return { success: false, message: 'Email atau kata sandi tidak sesuai dengan backend API.' };
+      }
+      // If network error, return clear error message
+      if (err.isNetworkError || err.status === 0) {
+        return { success: false, message: `Gagal terhubung ke backend API (${api.getBaseUrl()}). Periksa koneksi internet Anda atau server sedang cold-start.` };
+      }
+      return { success: false, message: err.message || 'Terjadi kesalahan autentikasi backend.' };
+    }
+  }
+
+  // 2. Fallback to local / demo users for offline / test mode
   let res = loginUser(identifier, password);
   if (res.success) return res;
 
