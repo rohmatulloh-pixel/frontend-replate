@@ -24,16 +24,22 @@ export const BASE_URL = normalizeApiUrl(
   typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_BASE_URL : null
 );
 
-let authToken = typeof localStorage !== 'undefined' ? localStorage.getItem('replate_access_token') : null;
+let authToken = (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage.getItem('replate_access_token') : null;
 
 export const setAuthToken = (token) => {
   authToken = token;
-  if (typeof localStorage !== 'undefined') {
-    if (token) {
-      localStorage.setItem('replate_access_token', token);
-    } else {
-      localStorage.removeItem('replate_access_token');
-    }
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    try {
+      if (token) {
+        window.sessionStorage.setItem('replate_access_token', token);
+      } else {
+        window.sessionStorage.removeItem('replate_access_token');
+      }
+    } catch {}
+  }
+  // Guarantee zero localStorage footprint
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try { window.localStorage.removeItem('replate_access_token'); } catch {}
   }
 };
 

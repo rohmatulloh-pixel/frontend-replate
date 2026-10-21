@@ -56,13 +56,86 @@ function isRealBrowserEnvironment() {
   return true;
 }
 
+// ============================================================================
+// OPTION 2 ZERO-LOCALSTORAGE ARCHITECTURE:
+// 1. Session state lives in sessionStorage (cleared on tab close, kept on F5).
+// 2. Business data (reports, emergency requests, demo, SOS) lives 100% in RAM memory.
+// 3. Zero writes or reads from localStorage in client browser.
+// 4. Automatic purge of any legacy localStorage data on initial load.
+// ============================================================================
+const inMemoryDataStore = new Map();
+
+export function getSessionStore() {
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    return window.sessionStorage;
+  }
+  if (typeof globalThis !== 'undefined' && globalThis.sessionStorage) {
+    return globalThis.sessionStorage;
+  }
+  if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+    return globalThis.localStorage;
+  }
+  return {
+    getItem: (key) => inMemoryDataStore.get(`session:${key}`) || null,
+    setItem: (key, val) => inMemoryDataStore.set(`session:${key}`, String(val)),
+    removeItem: (key) => inMemoryDataStore.delete(`session:${key}`),
+    clear: () => {
+      for (const k of inMemoryDataStore.keys()) {
+        if (k.startsWith('session:')) inMemoryDataStore.delete(k);
+      }
+    }
+  };
+}
+
+export function getDataStore() {
+  if (isRealBrowserEnvironment()) {
+    // In real browser client: 100% In-Memory (Zero disk persistence / Zero localStorage)
+    return {
+      getItem: (key) => (inMemoryDataStore.has(key) ? inMemoryDataStore.get(key) : null),
+      setItem: (key, val) => {
+        inMemoryDataStore.set(key, String(val));
+      },
+      removeItem: (key) => {
+        inMemoryDataStore.delete(key);
+      },
+      clear: () => inMemoryDataStore.clear()
+    };
+  }
+  // In Node.js testing environment: delegate to test runner's mock storage
+  if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+    return globalThis.localStorage;
+  }
+  return {
+    getItem: (key) => (inMemoryDataStore.has(key) ? inMemoryDataStore.get(key) : null),
+    setItem: (key, val) => inMemoryDataStore.set(key, String(val)),
+    removeItem: (key) => inMemoryDataStore.delete(key),
+    clear: () => inMemoryDataStore.clear()
+  };
+}
+
+// Automatic purge of legacy localStorage keys in real browser on startup
+if (isRealBrowserEnvironment()) {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      Object.values(STORAGE_KEYS).forEach(k => {
+        try { window.localStorage.removeItem(k); } catch {}
+      });
+      try { window.localStorage.removeItem('replate_access_token'); } catch {}
+      try { window.localStorage.removeItem('replate_lang_v1'); } catch {}
+    }
+  } catch (err) {
+    console.warn('[REPLATE Storage] Legacy localStorage purge notice:', err);
+  }
+}
+
+
 /**
  * Retrieve set of permanently deleted report IDs (Tombstones) to prevent cloud re-download (resurrection)
  */
 export function getDeletedReportIds() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return new Set();
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_REPORT_IDS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.DELETED_REPORT_IDS);
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
     return new Set(Array.isArray(arr) ? arr : []);
@@ -79,7 +152,7 @@ export function recordDeletedReportId(id) {
   try {
     const set = getDeletedReportIds();
     set.add(id);
-    localStorage.setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(set)));
+    getDataStore().setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(set)));
   } catch (err) {
     console.warn('[REPLATE Storage] Error recording deleted report ID:', err);
   }
@@ -99,7 +172,7 @@ export function isReportDeleted(id) {
 export function getDeletedEmergencyIds() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return new Set();
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
     return new Set(Array.isArray(arr) ? arr : []);
@@ -116,7 +189,7 @@ export function recordDeletedEmergencyId(id) {
   try {
     const set = getDeletedEmergencyIds();
     set.add(id);
-    localStorage.setItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS, JSON.stringify(Array.from(set)));
+    getDataStore().setItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS, JSON.stringify(Array.from(set)));
   } catch (err) {
     console.warn('[REPLATE Storage] Error recording deleted emergency ID:', err);
   }
@@ -138,7 +211,7 @@ export function isEmergencyDeleted(id) {
 export function migrateLegacyStorage() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return;
   try {
-    const legacyRaw = localStorage.getItem(STORAGE_KEYS.LEGACY_REPORTS);
+    const legacyRaw = getDataStore().getItem(STORAGE_KEYS.LEGACY_REPORTS);
     if (!legacyRaw) return;
 
     let parsed;
@@ -146,12 +219,12 @@ export function migrateLegacyStorage() {
       parsed = JSON.parse(legacyRaw);
     } catch {
       // Malformed legacy data - clear to unblock normal operation
-      localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+      getDataStore().removeItem(STORAGE_KEYS.LEGACY_REPORTS);
       return;
     }
 
     if (!Array.isArray(parsed)) {
-      localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+      getDataStore().removeItem(STORAGE_KEYS.LEGACY_REPORTS);
       return;
     }
 
@@ -179,11 +252,11 @@ export function migrateLegacyStorage() {
       }
     }
 
-    localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(Array.from(userMap.values())));
+    getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(Array.from(userMap.values())));
     if (demoMap.size > 0) {
-      localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(Array.from(demoMap.values())));
+      getDataStore().setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(Array.from(demoMap.values())));
     }
-    localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+    getDataStore().removeItem(STORAGE_KEYS.LEGACY_REPORTS);
   } catch (err) {
     console.error('[REPLATE Storage] Error migrating legacy storage:', err);
   }
@@ -195,7 +268,7 @@ export function migrateLegacyStorage() {
 export function getUserReports() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.USER_REPORTS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.USER_REPORTS);
     if (!raw) return [];
     const list = JSON.parse(raw);
     return Array.isArray(list) ? list : [];
@@ -211,7 +284,7 @@ export function getUserReports() {
 export function getDemoReports() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.DEMO_REPORTS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.DEMO_REPORTS);
     if (!raw) return [];
     const list = JSON.parse(raw);
     return Array.isArray(list) ? list : [];
@@ -309,7 +382,7 @@ export function saveReport(report) {
     };
 
     const updated = [newReport, ...userReports];
-    localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(updated));
+    getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(updated));
     dispatchStorageEvent();
 
     // Async sync to Supabase Cloud in background (real browser only)
@@ -346,7 +419,7 @@ export function saveReport(report) {
                   curUsers[idx].id = backendListing.id;
                   curUsers[idx].journeyId = journey?.id || backendListing.id;
                   curUsers[idx].journeyStatus = 'MATCHED';
-                  localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(curUsers));
+                  getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(curUsers));
                   dispatchStorageEvent();
                 }
               } catch (assignErr) {
@@ -400,7 +473,7 @@ export function updateReport(id, updates) {
         ...updates,
         updatedAt: new Date().toISOString()
       };
-      localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
+      getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
       dispatchStorageEvent();
 
       // Async sync to Supabase Cloud in background (real browser only)
@@ -445,7 +518,7 @@ export function updateReport(id, updates) {
         ...updates,
         updatedAt: new Date().toISOString()
       };
-      localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(demoReports));
+      getDataStore().setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(demoReports));
       dispatchStorageEvent();
       return demoReports[dIdx];
     }
@@ -595,14 +668,14 @@ export function deleteReport(id) {
     let deleted = false;
 
     if (uFiltered.length !== userReports.length) {
-      localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(uFiltered));
+      getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(uFiltered));
       deleted = true;
     }
 
     const demoReports = getDemoReports();
     const dFiltered = demoReports.filter(r => r.id !== id);
     if (dFiltered.length !== demoReports.length) {
-      localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(dFiltered));
+      getDataStore().setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(dFiltered));
       deleted = true;
     }
 
@@ -631,14 +704,14 @@ export function deleteReport(id) {
  */
 export function clearAllData() {
   try {
-    localStorage.removeItem(STORAGE_KEYS.USER_REPORTS);
-    localStorage.removeItem(STORAGE_KEYS.DEMO_REPORTS);
-    localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
-    localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
-    localStorage.removeItem(STORAGE_KEYS.DELETED_REPORT_IDS);
-    localStorage.removeItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
-    localStorage.removeItem(STORAGE_KEYS.SOS_BROADCASTS);
-    localStorage.removeItem(STORAGE_KEYS.SOS_RESPONSES);
+    getDataStore().removeItem(STORAGE_KEYS.USER_REPORTS);
+    getDataStore().removeItem(STORAGE_KEYS.DEMO_REPORTS);
+    getDataStore().removeItem(STORAGE_KEYS.DEMO_FLAG);
+    getDataStore().removeItem(STORAGE_KEYS.LEGACY_REPORTS);
+    getDataStore().removeItem(STORAGE_KEYS.DELETED_REPORT_IDS);
+    getDataStore().removeItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
+    getDataStore().removeItem(STORAGE_KEYS.SOS_BROADCASTS);
+    getDataStore().removeItem(STORAGE_KEYS.SOS_RESPONSES);
     dispatchStorageEvent();
     return true;
   } catch (err) {
@@ -864,7 +937,7 @@ export function getCuratedDemoReports() {
  */
 export function isDemoMode() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return false;
-  return localStorage.getItem(STORAGE_KEYS.DEMO_FLAG) === 'true';
+  return getDataStore().getItem(STORAGE_KEYS.DEMO_FLAG) === 'true';
 }
 
 /**
@@ -889,8 +962,8 @@ export function loadDemoData() {
           changed = true;
         }
       }
-      if (changed && typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(delSet)));
+      if (changed && true) {
+        getDataStore().setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(delSet)));
       }
     } catch {}
 
@@ -904,15 +977,15 @@ export function loadDemoData() {
     }
 
     const mergedDemo = Array.from(demoMap.values());
-    localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(mergedDemo));
-    localStorage.setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
+    getDataStore().setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(mergedDemo));
+    getDataStore().setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
 
     // Load demo emergency requests if none exist
     try {
       const existingEmg = getEmergencyRequests();
       if (existingEmg.length === 0) {
         const demoEmg = getCuratedDemoEmergencyRequests();
-        localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(demoEmg));
+        getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(demoEmg));
       }
     } catch {
       // Ignore emergency demo error in edge environments
@@ -945,20 +1018,20 @@ export function resetDemoData() {
           changed = true;
         }
       }
-      if (changed && typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(delSet)));
+      if (changed && true) {
+        getDataStore().setItem(STORAGE_KEYS.DELETED_REPORT_IDS, JSON.stringify(Array.from(delSet)));
       }
     } catch {}
 
-    localStorage.setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(freshCurated));
-    localStorage.setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
+    getDataStore().setItem(STORAGE_KEYS.DEMO_REPORTS, JSON.stringify(freshCurated));
+    getDataStore().setItem(STORAGE_KEYS.DEMO_FLAG, 'true');
 
     // Reset demo emergency requests while preserving user-created requests
     try {
       const emg = getEmergencyRequests();
       const userEmg = emg.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-'));
       const freshDemoEmg = getCuratedDemoEmergencyRequests();
-      localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify([...userEmg, ...freshDemoEmg]));
+      getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify([...userEmg, ...freshDemoEmg]));
     } catch {
       // Ignore in edge environments
     }
@@ -977,17 +1050,17 @@ export function resetDemoData() {
 export function clearDemoData() {
   migrateLegacyStorage();
   try {
-    localStorage.removeItem(STORAGE_KEYS.DEMO_REPORTS);
-    localStorage.removeItem(STORAGE_KEYS.DEMO_FLAG);
+    getDataStore().removeItem(STORAGE_KEYS.DEMO_REPORTS);
+    getDataStore().removeItem(STORAGE_KEYS.DEMO_FLAG);
 
     // Keep user emergency requests, remove only demo emergency requests
     try {
       const emg = getEmergencyRequests();
       const userEmg = emg.filter(r => !r.isDemo && !String(r.id || '').startsWith('demo-'));
       if (userEmg.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(userEmg));
+        getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(userEmg));
       } else {
-        localStorage.removeItem(STORAGE_KEYS.EMERGENCY_REQUESTS);
+        getDataStore().removeItem(STORAGE_KEYS.EMERGENCY_REQUESTS);
       }
     } catch {
       // Ignore in edge environments
@@ -1056,7 +1129,7 @@ const dispatchAuthEvent = (user) => {
 export function getCurrentUser() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.USER_SESSION);
+    const raw = getSessionStore().getItem(STORAGE_KEYS.USER_SESSION);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (err) {
@@ -1071,7 +1144,7 @@ export function getCurrentUser() {
 export function getRegisteredUsers() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.REGISTERED_USERS);
     if (!raw) return [];
     const list = JSON.parse(raw);
     return Array.isArray(list) ? list : [];
@@ -1136,7 +1209,7 @@ export function registerUser({ username, email, password, name, organization, ro
     };
 
     registered.push(newUser);
-    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
+    getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
 
     // Async sync to Supabase Cloud users table in background (real browser only)
     if (isRealBrowserEnvironment()) {
@@ -1163,7 +1236,7 @@ export function registerUser({ username, email, password, name, organization, ro
       loggedInAt: new Date().toISOString()
     };
 
-    localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
+    getSessionStore().setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
     dispatchAuthEvent(sessionUser);
 
     return { success: true, user: sessionUser };
@@ -1227,7 +1300,7 @@ export function loginUser(identifier, password) {
       }
     }
 
-    localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
+    getSessionStore().setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
     dispatchAuthEvent(sessionUser);
 
     // Authenticate with live NestJS Backend API if running in real browser
@@ -1271,7 +1344,7 @@ export async function loginUserAsync(identifier, password) {
           }
         }
         if (changed) {
-          localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(local));
+          getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(local));
           res = loginUser(identifier, password);
         }
       }
@@ -1287,7 +1360,7 @@ export async function loginUserAsync(identifier, password) {
  */
 export function logoutUser() {
   try {
-    localStorage.removeItem(STORAGE_KEYS.USER_SESSION);
+    getSessionStore().removeItem(STORAGE_KEYS.USER_SESSION);
     if (isRealBrowserEnvironment()) {
       api.auth.logout().catch(() => {});
     }
@@ -1367,11 +1440,11 @@ export function getCuratedDemoEmergencyRequests() {
 export function getEmergencyRequests() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.EMERGENCY_REQUESTS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.EMERGENCY_REQUESTS);
     if (!raw) {
       if (isDemoMode()) {
         const demoRequests = getCuratedDemoEmergencyRequests();
-        localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(demoRequests));
+        getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(demoRequests));
         return demoRequests;
       }
       return [];
@@ -1434,7 +1507,7 @@ export function saveEmergencyRequest(requestData) {
   };
 
   const updated = [newRequest, ...existing];
-  localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(updated));
+  getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(updated));
 
   try {
     publishSOSBroadcast(newRequest);
@@ -1485,7 +1558,7 @@ export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
     updatedAt: new Date().toISOString()
   };
 
-  localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(existing));
+  getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(existing));
   dispatchStorageEvent();
 
   // Async sync to Supabase Cloud in background (real browser only)
@@ -1514,7 +1587,7 @@ export function deleteEmergencyRequest(id) {
   const existing = getEmergencyRequests();
   const filtered = existing.filter(r => r.id !== id);
   if (filtered.length !== existing.length) {
-    localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
+    getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
     dispatchStorageEvent();
     if (isRealBrowserEnvironment()) {
       deleteEmergencyRequestFromSupabase(id).catch(() => {});
@@ -1620,7 +1693,7 @@ export function calculateSOSExpiry(urgencyLevel) {
 export function getAllSOSBroadcasts() {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SOS_BROADCASTS);
+    const raw = getDataStore().getItem(STORAGE_KEYS.SOS_BROADCASTS);
     if (!raw) return [];
     const list = JSON.parse(raw);
     return Array.isArray(list) ? list : [];
@@ -1645,8 +1718,8 @@ export function expireOverdueSOSBroadcasts() {
     return b;
   });
 
-  if (changed && typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(updated));
+  if (changed && true) {
+    getDataStore().setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(updated));
     dispatchStorageEvent();
   }
   return updated;
@@ -1692,8 +1765,8 @@ export function publishSOSBroadcast(emergencyRequest) {
     broadcasts.unshift(newBroadcast);
   }
 
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+  if (true) {
+    getDataStore().setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
     dispatchStorageEvent();
   }
 
@@ -1717,7 +1790,7 @@ export function getActiveSOSBroadcasts() {
 export function getSOSHistory(supplierOrgId = null) {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SOS_RESPONSES);
+    const raw = getDataStore().getItem(STORAGE_KEYS.SOS_RESPONSES);
     if (!raw) return [];
     const list = JSON.parse(raw);
     const arr = Array.isArray(list) ? list : [];
@@ -1742,8 +1815,8 @@ export function respondToSOSBroadcast(broadcastId, notes = '', actingUser = null
   }
   if (new Date(broadcast.expiresAt).getTime() <= Date.now()) {
     broadcasts[idx].status = 'EXPIRED';
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+    if (true) {
+      getDataStore().setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
       dispatchStorageEvent();
     }
     return { success: false, error: 'Siaran SOS telah kedaluwarsa' };
@@ -1812,8 +1885,8 @@ export function respondToSOSBroadcast(broadcastId, notes = '', actingUser = null
     },
     updatedAt: new Date().toISOString(),
   };
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+  if (true) {
+    getDataStore().setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
   }
 
   // 3. Update emergency request status to ALLOCATED
@@ -1845,8 +1918,8 @@ export function respondToSOSBroadcast(broadcastId, notes = '', actingUser = null
     journeyStatus: 'MATCHED',
   };
   history.unshift(responseEntry);
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.SOS_RESPONSES, JSON.stringify(history));
+  if (true) {
+    getDataStore().setItem(STORAGE_KEYS.SOS_RESPONSES, JSON.stringify(history));
   }
 
   dispatchStorageEvent();
@@ -1875,8 +1948,8 @@ export function fulfillSOSBroadcast(broadcastId) {
   if (idx !== -1) {
     broadcasts[idx].status = 'FULFILLED';
     broadcasts[idx].updatedAt = new Date().toISOString();
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+    if (true) {
+      getDataStore().setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
       dispatchStorageEvent();
     }
   }
@@ -1939,7 +2012,7 @@ export async function initSupabaseCloudSync() {
         }
 
         if (localChanged) {
-          localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(localUsers));
+          getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(localUsers));
           dispatchStorageEvent();
         }
       } catch (err) {
@@ -1989,7 +2062,7 @@ export async function initSupabaseCloudSync() {
         }
 
         if (reqsChanged) {
-          localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(localReqs));
+          getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(localReqs));
           dispatchStorageEvent();
         }
       } catch (err) {
@@ -2024,7 +2097,7 @@ export async function initSupabaseCloudSync() {
         }
 
         if (usersChanged) {
-          localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
+          getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
           dispatchStorageEvent();
         }
       } catch (err) {
@@ -2043,7 +2116,7 @@ export async function initSupabaseCloudSync() {
           if (eventType === 'DELETE' && oldRow?.id) {
             recordDeletedReportId(oldRow.id);
             const filtered = userReports.filter(r => r.id !== oldRow.id);
-            localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(filtered));
+            getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(filtered));
           } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
             const incoming = mapSupabaseRowToReport(newRow);
             if (isReportDeleted(incoming.id)) return;
@@ -2053,7 +2126,7 @@ export async function initSupabaseCloudSync() {
             } else {
               userReports.unshift(incoming);
             }
-            localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
+            getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
           }
           dispatchStorageEvent();
         } catch (err) {
@@ -2069,7 +2142,7 @@ export async function initSupabaseCloudSync() {
           if (eventType === 'DELETE' && oldRow?.id) {
             recordDeletedEmergencyId(oldRow.id);
             const filtered = reqs.filter(r => r.id !== oldRow.id);
-            localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
+            getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
           } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
             const incoming = mapRowToEmergencyRequest(newRow);
             if (isEmergencyDeleted(incoming.id)) return;
@@ -2079,7 +2152,7 @@ export async function initSupabaseCloudSync() {
             } else {
               reqs.unshift(incoming);
             }
-            localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(reqs));
+            getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(reqs));
           }
           dispatchStorageEvent();
         } catch (err) {
@@ -2112,7 +2185,7 @@ export async function initSupabaseCloudSync() {
             } else {
               localUsers.push(userObj);
             }
-            localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
+            getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
             dispatchStorageEvent();
           }
         } catch (err) {
@@ -2175,7 +2248,7 @@ export async function syncBackendSurplusToLocal() {
     }
 
     const merged = Array.from(reportMap.values());
-    localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(merged));
+    getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(merged));
     dispatchStorageEvent();
     return merged;
   } catch (err) {

@@ -19,7 +19,12 @@ export default class ErrorBoundary extends React.Component {
   };
 
   handleReset = () => {
-    localStorage.clear();
+    try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage?.clear();
+        window.localStorage?.clear();
+      }
+    } catch {}
     window.location.reload();
   };
 

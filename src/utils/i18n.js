@@ -550,10 +550,13 @@ export const TRANSLATIONS = {
   }
 };
 
-// Storage helper for language preference
+// Storage helper for language preference (Option 2: sessionStorage / zero localStorage)
 export const getActiveLanguage = () => {
   try {
-    return localStorage.getItem('replate_lang_v1') || 'id';
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return window.sessionStorage.getItem('replate_lang_v1') || 'id';
+    }
+    return 'id';
   } catch {
     return 'id';
   }
@@ -561,8 +564,13 @@ export const getActiveLanguage = () => {
 
 export const setActiveLanguage = (lang) => {
   try {
-    localStorage.setItem('replate_lang_v1', lang);
-    window.dispatchEvent(new CustomEvent('replate:language-change', { detail: lang }));
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem('replate_lang_v1', lang);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('replate:language-change', { detail: lang }));
+      try { window.localStorage?.removeItem('replate_lang_v1'); } catch {}
+    }
   } catch (err) {
     console.error('Failed to save language', err);
   }
