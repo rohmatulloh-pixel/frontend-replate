@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   ShieldCheck, 
-  AlertCircle, 
+  AlertTriangle, 
+  ShieldAlert,
   CheckCircle2, 
   Thermometer, 
   Box, 
-  Clock 
+  Clock,
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { 
   FOOD_TYPES,
@@ -17,6 +21,7 @@ import {
   SAFETY_HANDLING_OPTIONS,
   TIME_WINDOWS 
 } from '../data/foods';
+import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate';
 import Button from './Button';
 
 export default function EditSafetyModal({
@@ -36,7 +41,7 @@ export default function EditSafetyModal({
     packagingConditionId: initialData?.packagingConditionId || 'intact_proper',
     handlingIntegrityId: initialData?.handlingIntegrityId || 'hygienic_separated',
     timeWindowId: initialData?.timeWindowId || '1_3h',
-    storageDurationHours: initialData?.storageDurationHours || '1.5',
+    storageDurationHours: initialData?.storageDurationHours ?? '1.5',
     expiryDate: initialData?.expiryDate || '',
     preparedAt: initialData?.preparedAt || ''
   }));
@@ -52,31 +57,55 @@ export default function EditSafetyModal({
         packagingConditionId: initialData.packagingConditionId || 'intact_proper',
         handlingIntegrityId: initialData.handlingIntegrityId || 'hygienic_separated',
         timeWindowId: initialData.timeWindowId || '1_3h',
-        storageDurationHours: initialData.storageDurationHours || '1.5',
+        storageDurationHours: initialData.storageDurationHours ?? '1.5',
         expiryDate: initialData.expiryDate || '',
         preparedAt: initialData.preparedAt || ''
       });
     }
   }, [initialData, isOpen]);
 
-  // Lock background scroll when open
+  // Lock background scroll & handle Escape key
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
     } else {
       document.body.style.overflow = '';
     }
+
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
+
+  // Real-time live gate prediction so user immediately knows if partner confirmation will unlock!
+  const previewGate = useMemo(() => {
+    return evaluateFoodSafetyGate({
+      ...formData,
+      quantity: initialData?.quantity || 1,
+      unit: initialData?.unit || 'kg'
+    }, lang);
+  }, [formData, initialData, lang]);
 
   if (!isOpen) return null;
 
   const handleApply = (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (onSave) {
-      onSave(formData);
+      onSave({
+        ...formData,
+        storageDurationHours: formData.storageDurationHours !== '' ? String(formData.storageDurationHours) : '0'
+      });
     }
     onClose();
   };
@@ -93,217 +122,314 @@ export default function EditSafetyModal({
     }
   };
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
       onClick={onClose}
+      role="presentation"
     >
       <div 
-        className="bg-white rounded-3xl border border-slate-100 max-w-2xl w-full shadow-2xl relative flex flex-col max-h-[88vh] overflow-hidden"
+        className="bg-white rounded-3xl border border-slate-100 max-w-3xl w-full shadow-2xl relative flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="edit-safety-title"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header - Fixed & Compact */}
-        <div className="shrink-0 px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold shrink-0">
-              <ShieldCheck className="w-5 h-5 text-teal-700" />
+        {/* Form wraps whole content: header, scrollable body, and sticky footer */}
+        <form onSubmit={handleApply} className="flex flex-col h-full max-h-[92vh] overflow-hidden">
+          {/* Header - Fixed & High-Contrast */}
+          <div className="shrink-0 px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold shrink-0">
+                <ShieldCheck className="w-5 h-5 text-teal-700" />
+              </div>
+              <div>
+                <h3 id="edit-safety-title" className="text-base sm:text-lg font-display font-black text-brand-900 leading-tight">
+                  {isId ? 'Perbarui Parameter Keamanan Pangan' : 'Update Food Safety Parameters'}
+                </h3>
+                <p className="text-xs text-slate-500 font-sans leading-tight mt-0.5">
+                  {isId 
+                    ? 'Sesuaikan parameter untuk evaluasi ulang status kelayakan dan membuka konfirmasi mitra.' 
+                    : 'Modify inspection parameters to re-evaluate gate status and unlock destination routing.'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-display font-black text-brand-900 leading-tight">
-                {isId ? 'Perbarui Parameter Keamanan Pangan' : 'Update Food Safety Parameters'}
-              </h3>
-              <p className="text-[11px] text-slate-500 font-sans leading-tight">
-                {isId 
-                  ? 'Lengkapi atau ubah data untuk evaluasi ulang Food Safety Gate secara instan.' 
-                  : 'Modify fields to immediately re-evaluate the Food Safety Gate.'}
-              </p>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+              aria-label={isId ? 'Tutup modal' : 'Close modal'}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            
+            {/* Real-time Status Prediction Callout */}
+            <div className={`p-4 rounded-2xl border text-xs font-sans transition-all flex items-start gap-3 ${
+              previewGate.status === 'PASS'
+                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+                : previewGate.status === 'REVIEW'
+                ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                : 'bg-rose-50/90 border-rose-300 text-rose-950'
+            }`}>
+              {previewGate.status === 'PASS' && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />}
+              {previewGate.status === 'REVIEW' && <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />}
+              {previewGate.status === 'REJECT' && <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />}
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-display font-extrabold uppercase tracking-wide">
+                    {isId ? 'Prediksi Hasil Evaluasi:' : 'Safety Prediction:'}
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full font-display font-black text-[11px] ${
+                    previewGate.status === 'PASS' 
+                      ? 'bg-emerald-600 text-white' 
+                      : previewGate.status === 'REVIEW'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-rose-600 text-white'
+                  }`}>
+                    {previewGate.status}
+                  </span>
+                </div>
+                <p className="text-slate-700 leading-relaxed font-semibold">
+                  {previewGate.status === 'PASS' && (
+                    isId 
+                      ? 'Parameter memenuhi standar WHO & BPOM. Tombol pemilihan mitra penerima AKAN AKTIF setelah Anda klik Simpan.' 
+                      : 'All criteria meet safety standards. Recipient destination selection will UNLOCK upon saving.'
+                  )}
+                  {previewGate.status === 'REVIEW' && (
+                    isId 
+                      ? 'Suhu penyimpanan atau kondisi belum terverifikasi aman. Tombol pemilihan mitra konsumsi AKAN TETAP TERKUNCI demi keselamatan publik.' 
+                      : 'Thermal holding or condition not verified safe. Human consumption dispatch will REMAIN LOCKED for public safety.'
+                  )}
+                  {previewGate.status === 'REJECT' && (
+                    isId 
+                      ? 'Makanan terindikasi rusak atau melanggar standar keselamatan pangan. Hanya dapat dialihkan ke kompos organik industri.' 
+                      : 'Food exhibits spoilage. Restricted strictly to certified composting facility.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              {/* Parameter 1: Food Type & Category */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-food-type" className="block text-xs font-display font-black uppercase tracking-wider text-slate-700">
+                  {isId ? '01. Kategori & Karakteristik Pangan:' : '01. Food Category & Stream:'}
+                </label>
+                <select
+                  id="edit-food-type"
+                  value={formData.foodTypeId}
+                  onChange={(e) => setFormData({ ...formData, foodTypeId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {FOOD_TYPES.map((ft) => (
+                    <option key={ft.id} value={ft.id}>
+                      {ft.name} ({getCategoryLabel(ft.category)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parameter 2: Condition */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-safety-condition" className="block text-xs font-display font-black uppercase tracking-wider text-slate-700">
+                  {isId ? '02. Kondisi Fisik & Sensoris:' : '02. Physical & Sensory Condition:'}
+                </label>
+                <select
+                  id="edit-safety-condition"
+                  value={formData.safetyConditionId}
+                  onChange={(e) => setFormData({ ...formData, safetyConditionId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {SAFETY_CONDITION_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parameter 3: Storage History */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-storage-history" className="block text-xs font-display font-black uppercase tracking-wider text-slate-700">
+                  {isId ? '03. Riwayat Penyimpanan:' : '03. Storage History:'}
+                </label>
+                <select
+                  id="edit-storage-history"
+                  value={formData.storageHistoryId}
+                  onChange={(e) => setFormData({ ...formData, storageHistoryId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {SAFETY_STORAGE_HISTORY_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parameter 4: Storage Temperature Holding */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-storage-temp" className="block text-xs font-display font-black uppercase tracking-wider text-slate-700">
+                  {isId ? '04. Suhu Penyimpanan Aktual:' : '04. Actual Holding Temperature:'}
+                </label>
+                <select
+                  id="edit-storage-temp"
+                  value={formData.storageTempId}
+                  onChange={(e) => setFormData({ ...formData, storageTempId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {SAFETY_TEMP_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parameter 5: Packaging */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-packaging-condition" className="block text-xs font-display font-black uppercase tracking-wider text-slate-700">
+                  {isId ? '05. Integritas Kemasan:' : '05. Packaging Integrity:'}
+                </label>
+                <select
+                  id="edit-packaging-condition"
+                  value={formData.packagingConditionId}
+                  onChange={(e) => setFormData({ ...formData, packagingConditionId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {SAFETY_PACKAGING_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parameter 6: Handling & Hygiene */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-handling-integrity" className="block text-xs font-display font-black uppercase tracking-wider text-slate-700">
+                  {isId ? '06. Higiene Penanganan & Pemisahan:' : '06. Handling Hygiene & Separation:'}
+                </label>
+                <select
+                  id="edit-handling-integrity"
+                  value={formData.handlingIntegrityId}
+                  onChange={(e) => setFormData({ ...formData, handlingIntegrityId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {SAFETY_HANDLING_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isId ? opt.labelId : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Holding Duration */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-storage-duration" className="block text-xs font-display font-bold text-slate-700">
+                  {isId ? 'Lama Penyimpanan (Jam):' : 'Holding Duration (Hours):'}
+                </label>
+                <input
+                  id="edit-storage-duration"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={formData.storageDurationHours}
+                  onChange={(e) => setFormData({ ...formData, storageDurationHours: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-sans text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                  placeholder="Contoh: 1.5"
+                />
+              </div>
+
+              {/* Safe Time Window */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-time-window" className="block text-xs font-display font-bold text-slate-700">
+                  {isId ? 'Sisa Waktu Aman Konsumsi:' : 'Safe Consumption Window:'}
+                </label>
+                <select
+                  id="edit-time-window"
+                  value={formData.timeWindowId}
+                  onChange={(e) => setFormData({ ...formData, timeWindowId: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-sans text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                >
+                  {TIME_WINDOWS.map((tw) => (
+                    <option key={tw.id} value={tw.id}>
+                      {tw.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Prepared Time (Optional) */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-prepared-at" className="block text-xs font-display font-bold text-slate-700">
+                  {isId ? 'Waktu Penyiapan (Opsional):' : 'Preparation Time (Optional):'}
+                </label>
+                <input
+                  id="edit-prepared-at"
+                  type="datetime-local"
+                  value={formData.preparedAt ? formData.preparedAt.substring(0, 16) : ''}
+                  onChange={(e) => setFormData({ ...formData, preparedAt: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-sans text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                />
+              </div>
+
+              {/* Expiry Date (Optional) */}
+              <div className="space-y-1.5">
+                <label htmlFor="edit-expiry-date" className="block text-xs font-display font-bold text-slate-700">
+                  {isId ? 'Tanggal Kedaluwarsa (Opsional):' : 'Expiry Date (Optional):'}
+                </label>
+                <input
+                  id="edit-expiry-date"
+                  type="date"
+                  value={formData.expiryDate ? formData.expiryDate.substring(0, 10) : ''}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-sans text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-colors"
+                />
+              </div>
+
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
-            aria-label="Close modal"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Scrollable Form Body - Responsive 2-Column Grid */}
-        <form id="edit-safety-form" onSubmit={handleApply} className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            
-            {/* Parameter 1: Food Type & Category */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-black uppercase tracking-wider text-slate-700">
-                {isId ? '01. Kategori & Karakteristik Pangan:' : '01. Food Category & Stream:'}
-              </label>
-              <select
-                value={formData.foodTypeId}
-                onChange={(e) => setFormData({ ...formData, foodTypeId: e.target.value })}
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500"
-              >
-                {FOOD_TYPES.map((ft) => (
-                  <option key={ft.id} value={ft.id}>
-                    {ft.name} ({getCategoryLabel(ft.category)})
-                  </option>
-                ))}
-              </select>
+          {/* Footer - Fixed / Sticky Bottom with Always-Functional Submit Action */}
+          <div className="shrink-0 px-6 py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs flex items-center justify-between gap-3">
+            <div className="text-[11px] text-slate-500 font-sans hidden sm:block">
+              {isId ? 'Klik tombol di kanan untuk menerapkan perubahan.' : 'Click save to apply inspection changes.'}
             </div>
 
-            {/* Parameter 2: Condition */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-black uppercase tracking-wider text-slate-700">
-                {isId ? '02. Kondisi Fisik & Sensoris:' : '02. Physical & Sensory Condition:'}
-              </label>
-              <select
-                value={formData.safetyConditionId}
-                onChange={(e) => setFormData({ ...formData, safetyConditionId: e.target.value })}
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500"
+            <div className="flex items-center gap-2.5 ml-auto">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={onClose}
+                className="text-xs px-4 py-2 font-display font-bold"
               >
-                {SAFETY_CONDITION_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {isId ? opt.labelId : opt.labelEn}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {isId ? 'Batal' : 'Cancel'}
+              </Button>
 
-            {/* Parameter 3: Storage History */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-black uppercase tracking-wider text-slate-700">
-                {isId ? '03. Riwayat Penyimpanan:' : '03. Storage History:'}
-              </label>
-              <select
-                value={formData.storageHistoryId}
-                onChange={(e) => setFormData({ ...formData, storageHistoryId: e.target.value })}
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500"
+              <Button
+                type="submit"
+                variant="sun"
+                size="sm"
+                onClick={handleApply}
+                className="text-xs font-display font-black shadow-sun px-6 py-2"
               >
-                {SAFETY_STORAGE_HISTORY_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {isId ? opt.labelId : opt.labelEn}
-                  </option>
-                ))}
-              </select>
+                {isId ? 'Simpan & Evaluasi Ulang ✨' : 'Save & Re-Evaluate ✨'}
+              </Button>
             </div>
-
-            {/* Parameter 4: Storage Temperature Holding */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-black uppercase tracking-wider text-slate-700">
-                {isId ? '04. Suhu Penyimpanan Aktual:' : '04. Actual Holding Temperature:'}
-              </label>
-              <select
-                value={formData.storageTempId}
-                onChange={(e) => setFormData({ ...formData, storageTempId: e.target.value })}
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500"
-              >
-                {SAFETY_TEMP_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {isId ? opt.labelId : opt.labelEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Parameter 5: Packaging */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-black uppercase tracking-wider text-slate-700">
-                {isId ? '05. Integritas Kemasan:' : '05. Packaging Integrity:'}
-              </label>
-              <select
-                value={formData.packagingConditionId}
-                onChange={(e) => setFormData({ ...formData, packagingConditionId: e.target.value })}
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500"
-              >
-                {SAFETY_PACKAGING_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {isId ? opt.labelId : opt.labelEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Parameter 6: Handling & Hygiene */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-black uppercase tracking-wider text-slate-700">
-                {isId ? '06. Higiene Penanganan & Pemisahan:' : '06. Handling Hygiene & Separation:'}
-              </label>
-              <select
-                value={formData.handlingIntegrityId}
-                onChange={(e) => setFormData({ ...formData, handlingIntegrityId: e.target.value })}
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-display font-bold text-slate-800 focus:outline-none focus:border-brand-500"
-              >
-                {SAFETY_HANDLING_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {isId ? opt.labelId : opt.labelEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Holding Duration */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-bold text-slate-600">
-                {isId ? 'Lama Penyimpanan (Jam):' : 'Holding Duration (Hours):'}
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                value={formData.storageDurationHours}
-                onChange={(e) => setFormData({ ...formData, storageDurationHours: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-sans text-slate-800 focus:outline-none focus:border-brand-500"
-              >
-              </input>
-            </div>
-
-            {/* Safe Time Window */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-display font-bold text-slate-600">
-                {isId ? 'Sisa Waktu Aman Konsumsi:' : 'Safe Consumption Window:'}
-              </label>
-              <select
-                value={formData.timeWindowId}
-                onChange={(e) => setFormData({ ...formData, timeWindowId: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-sans text-slate-800 focus:outline-none focus:border-brand-500"
-              >
-                {TIME_WINDOWS.map((tw) => (
-                  <option key={tw.id} value={tw.id}>
-                    {tw.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
           </div>
         </form>
-
-        {/* Footer - Fixed / Sticky Bottom with Always-Visible Action Buttons */}
-        <div className="shrink-0 px-5 py-3 border-t border-slate-100 bg-slate-50/90 backdrop-blur-xs flex items-center justify-end gap-2.5">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onClose}
-            className="text-xs px-4 py-2"
-          >
-            {isId ? 'Batal' : 'Cancel'}
-          </Button>
-
-          <Button
-            type="submit"
-            form="edit-safety-form"
-            variant="sun"
-            size="sm"
-            className="text-xs font-display font-black shadow-sun px-5 py-2"
-          >
-            {isId ? 'Simpan & Evaluasi Ulang' : 'Save & Re-Evaluate'}
-          </Button>
-        </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

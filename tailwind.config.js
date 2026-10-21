@@ -78,7 +78,7 @@ export default {
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0', transform: 'translate3d(0, 6px, 0)' },
-          '100%': { opacity: '1', transform: 'translate3d(0, 0, 0)' },
+          '100%': { opacity: '1', transform: 'none' },
         },
         scaleUp: {
           '0%': { opacity: '0', transform: 'scale3d(0.96, 0.96, 1)' },

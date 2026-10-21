@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   AlertTriangle, 
   Plus, 
@@ -898,9 +899,18 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
       )}
 
       {/* 5. Matching Modal / Overlay */}
-      {selectedRequestForMatching && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      {selectedRequestForMatching && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setSelectedRequestForMatching(null)}
+          role="presentation"
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto animate-scaleUp"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-display font-black text-brand-600 uppercase tracking-wider block">
@@ -996,7 +1006,8 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
