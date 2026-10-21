@@ -6,7 +6,7 @@
 
 export function normalizeApiUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') {
-    return 'https://replate-backend-roo2.onrender.com/api/v1';
+    return 'https://replate.atsa.my.id/api/v1';
   }
   let url = rawUrl.trim().replace(/\/+$/, '');
   if (!url.endsWith('/api/v1')) {
