@@ -4,6 +4,7 @@ import { determineRoute } from '../engine/routeEngine';
 import { matchDestinations } from '../engine/matchingEngine';
 import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate';
 import { getFoodDisplayName } from '../utils/calculations';
+import { getDynamicRecipients, getCurrentUser } from '../utils/storage';
 import FoodSafetyGateCard from '../components/FoodSafetyGateCard';
 import EditSafetyModal from '../components/EditSafetyModal';
 import ScoreBreakdown from '../components/ScoreBreakdown';
@@ -38,6 +39,16 @@ export default function Assessment({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [confirmOrganicModalOpen, setConfirmOrganicModalOpen] = useState(false);
   const [targetOrganicDestination, setTargetOrganicDestination] = useState(null);
+  const [dynamicRecipients, setDynamicRecipients] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+
+  useEffect(() => {
+    getDynamicRecipients().then(recs => {
+      if (recs && recs.length > 0) {
+        setDynamicRecipients(recs);
+      }
+    });
+  }, []);
 
   // Editable local state in case user modifies parameters inside Assessment
   const [currentReport, setCurrentReport] = useState(() => pendingReport || {
@@ -101,7 +112,7 @@ export default function Assessment({
       matches: matchedDestinations,
       gate: foodSafetyGate
     };
-  }, [currentReport, currentLang, foodSafetyGate]);
+  }, [currentReport, currentLang, foodSafetyGate, dynamicRecipients, currentUser]);
 
 
   const handleUpdateSafetyParameters = (updatedFields) => {

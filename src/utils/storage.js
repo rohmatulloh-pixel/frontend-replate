@@ -2259,3 +2259,159 @@ export async function syncBackendSurplusToLocal() {
 
 
 
+
+
+/**
+ * Update user profile, contact, and geolocation in session and backend
+ */
+export async function updateUserProfile(profileData) {
+  try {
+    const current = getCurrentUser();
+    if (!current) throw new Error('Pengguna belum masuk');
+
+    let backendResult = null;
+    if (api.isLiveApiEnabled()) {
+      try {
+        await ensureApiToken();
+        backendResult = await api.profile.updateProfile(profileData);
+      } catch (err) {
+        console.warn('[REPLATE Storage] Live API profile update warning:', err);
+      }
+    }
+
+    const updatedUser = {
+      ...current,
+      name: profileData.fullName || profileData.name || current.name,
+      fullName: profileData.fullName || current.fullName || current.name,
+      organization: profileData.organizationName || profileData.organization || current.organization,
+      organizationName: profileData.organizationName || current.organizationName || current.organization,
+      address: profileData.address !== undefined ? profileData.address : current.address,
+      contactPhone: profileData.contactPhone !== undefined ? profileData.contactPhone : current.contactPhone,
+      contactEmail: profileData.contactEmail !== undefined ? profileData.contactEmail : current.contactEmail,
+      latitude: profileData.latitude !== undefined ? Number(profileData.latitude) : current.latitude,
+      longitude: profileData.longitude !== undefined ? Number(profileData.longitude) : current.longitude,
+      recipientProfile: profileData.recipientProfile || current.recipientProfile
+    };
+
+    // Update in registered users list
+    const registered = getRegisteredUsers();
+    const rIdx = registered.findIndex(u => u.id === current.id || u.username === current.username);
+    if (rIdx !== -1) {
+      registered[rIdx] = { ...registered[rIdx], ...updatedUser };
+      getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
+    }
+
+    // Update in session
+    getSessionStore().setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(updatedUser));
+    dispatchStorageEvent();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('replate:auth-change', { detail: updatedUser }));
+    }
+
+    return { success: true, user: updatedUser, backendData: backendResult };
+  } catch (err) {
+    console.error('[REPLATE Storage] Error updating profile:', err);
+    return { success: false, message: err.message || 'Gagal memperbarui profil' };
+  }
+}
+
+/**
+ * Change user password with server Argon2id verification and local fallback
+ */
+export async function changeUserPassword(currentPassword, newPassword) {
+  try {
+    const current = getCurrentUser();
+    if (!current) throw new Error('Pengguna belum masuk');
+
+    if (api.isLiveApiEnabled()) {
+      await ensureApiToken();
+      await api.profile.changePassword({ currentPassword, newPassword });
+    }
+
+    // Update local registered user password
+    const registered = getRegisteredUsers();
+    const rIdx = registered.findIndex(u => u.id === current.id || u.username === current.username);
+    if (rIdx !== -1) {
+      registered[rIdx].password = newPassword;
+      getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registered));
+    }
+
+    return { success: true, message: 'Kata sandi berhasil diperbarui' };
+  } catch (err) {
+    console.error('[REPLATE Storage] Error changing password:', err);
+    return { success: false, message: err.message || 'Gagal mengubah kata sandi' };
+  }
+}
+
+/**
+ * Fetch latest profile from backend API or session
+ */
+export async function fetchUserProfile() {
+  try {
+    if (api.isLiveApiEnabled()) {
+      await ensureApiToken();
+      const res = await api.profile.getProfile();
+      const data = res?.data || res;
+      if (data) {
+        const current = getCurrentUser();
+        const merged = {
+          ...current,
+          id: data.id || current?.id,
+          name: data.fullName || current?.name,
+          fullName: data.fullName,
+          organization: data.organization?.name || current?.organization,
+          organizationName: data.organization?.name,
+          address: data.organization?.address,
+          contactPhone: data.organization?.contactPhone,
+          contactEmail: data.organization?.contactEmail,
+          latitude: data.organization?.latitude ? Number(data.organization.latitude) : null,
+          longitude: data.organization?.longitude ? Number(data.organization.longitude) : null,
+          recipientProfile: data.organization?.recipientProfile || null
+        };
+        getSessionStore().setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(merged));
+        dispatchStorageEvent();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('replate:auth-change', { detail: merged }));
+        }
+        return merged;
+      }
+    }
+  } catch (err) {
+    console.warn('[REPLATE Storage] fetchUserProfile warning:', err);
+  }
+  return getCurrentUser();
+}
+
+/**
+ * Fetch dynamic verified recipients from backend API with fallback to static destinations
+ */
+export async function getDynamicRecipients() {
+  if (api.isLiveApiEnabled()) {
+    try {
+      await ensureApiToken();
+      const res = await api.recipients.findAll();
+      const recipients = Array.isArray(res) ? res : (res?.data || []);
+      if (recipients && recipients.length > 0) {
+        return recipients.map(r => ({
+          id: r.id || r.organization?.id,
+          name: r.organization?.name || r.name,
+          type: r.recipientType ? r.recipientType.replace(/_/g, ' ') : 'Community Kitchen',
+          recipientType: r.recipientType || 'COMMUNITY_KITCHEN',
+          address: r.organization?.address || '',
+          capacityKg: Number(r.dailyMaxCapacityKg) || 100,
+          currentAvailableCapacityKg: Number(r.availableCapacityKg) || Number(r.dailyMaxCapacityKg) || 100,
+          latitude: r.organization?.latitude ? Number(r.organization.latitude) : null,
+          longitude: r.organization?.longitude ? Number(r.organization.longitude) : null,
+          hasRefrigeration: Boolean(r.hasRefrigeration),
+          hasFreezer: Boolean(r.hasFreezer),
+          acceptedFoodTypes: r.acceptedFoodCategories || ['COOKED_MEALS', 'BAKERY_PASTRY'],
+          preferredRoutes: ['REDISTRIBUTE', 'PROCESS'],
+          demoDistanceKm: 2.5
+        }));
+      }
+    } catch (err) {
+      console.warn('[REPLATE Storage] Fallback to local destinations on recipient fetch error:', err);
+    }
+  }
+  return null;
+}

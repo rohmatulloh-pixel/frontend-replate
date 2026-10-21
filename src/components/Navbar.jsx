@@ -384,6 +384,18 @@ export default function Navbar({ activePage, onNavigate }) {
                     type="button"
                     onClick={() => {
                       setProfileDropdownOpen(false);
+                      handleNavClick('profile');
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-slate-50 hover:text-brand-900 transition-colors flex items-center gap-2"
+                  >
+                    <UserIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{isId ? 'Profil & Pengaturan GPS' : 'Profile & GPS Settings'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
                       setLoginModalOpen(true);
                     }}
                     className="w-full text-left px-3 py-2 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-slate-50 hover:text-brand-900 transition-colors flex items-center gap-2"
@@ -503,6 +515,18 @@ export default function Navbar({ activePage, onNavigate }) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 pt-1 border-t border-brand-100/80 text-[11px] font-display font-bold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleNavClick('profile');
+                    }}
+                    className="flex-1 py-1.5 px-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-center hover:bg-slate-50 flex items-center justify-center gap-1 shadow-2xs text-emerald-700 font-bold"
+                  >
+                    <UserIcon className="w-3 h-3 text-emerald-600" />
+                    <span>{isId ? 'Profil' : 'Profile'}</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {

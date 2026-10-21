@@ -152,6 +152,21 @@ export const api = {
     },
   },
 
+  // --- 1.1 Profil & Pengaturan Akun Geospasial ---
+  profile: {
+    getProfile: () => request('/profile'),
+    updateProfile: (payload) =>
+      request('/profile', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    changePassword: ({ currentPassword, newPassword }) =>
+      request('/profile/password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
+  },
+
   // --- 2. Surplus Listings & Food Safety Gate ---
   surplus: {
     create: (listingPayload) =>
@@ -163,6 +178,7 @@ export const api = {
       const qs = new URLSearchParams(params).toString();
       return request(`/surplus-listings${qs ? `?${qs}` : ''}`);
     },
+    getById: (id) => request(`/surplus-listings/${id}`),
     getMyDispatches: () => request('/surplus-listings/my-dispatches'),
     getAssessment: (listingId) => request(`/surplus-listings/${listingId}/assessment`),
     updateSafetyParameters: (listingId, parameters) =>
@@ -182,8 +198,13 @@ export const api = {
       }),
   },
 
-  // --- 3. Recipient Capacities ---
+  // --- 3. Recipient Capacities & Directory ---
   recipients: {
+    findAll: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return request(`/recipients${qs ? `?${qs}` : ''}`);
+    },
+    getById: (id) => request(`/recipients/${id}`),
     getMyCapacity: () => request('/recipients/my-capacity'),
   },
 
@@ -276,10 +297,11 @@ export const api = {
     getInsights: (lang = 'id') => request(`/analytics/insights?lang=${lang}`),
   },
 
-  // --- 6. Admin & Simulation ---
+  // --- 8. Admin, Simulation & Audit Logs ---
   admin: {
     loadDemo: () => request('/admin/simulation/load-demo', { method: 'POST' }),
     clearDemo: () => request('/admin/simulation/clear-demo', { method: 'DELETE' }),
+    getAuditLogs: (page = 1, limit = 50) => request(`/admin/simulation/audit-logs?page=${page}&limit=${limit}`),
   },
 };
 

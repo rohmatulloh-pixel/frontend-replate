@@ -20,6 +20,7 @@
 import { MATCHING_WEIGHTS } from '../data/rules.js';
 import { DESTINATIONS } from '../data/destinations.js';
 import { FOOD_TYPES } from '../data/foods.js';
+import { calculateHaversineDistanceKm, estimateTransitMinutes } from '../utils/calculations.js';
 
 export function matchDestinations({
   foodTypeId,
@@ -27,14 +28,16 @@ export function matchDestinations({
   unit = 'kg',
   recommendedRoute,
   timeWindowId,
-  foodSafetyGate = null
+  foodSafetyGate = null,
+  customCandidates = null,
+  donorCoords = null
 }, lang = 'id') {
   const isId = lang === 'id';
   const foodType = FOOD_TYPES.find(f => f.id === foodTypeId) || FOOD_TYPES[0];
   const qtyInKg = unit === 'portions' ? quantity * 0.35 : Number(quantity) || 1;
 
   // Filter candidate destinations based on Food Safety Gate status
-  let candidateDestinations = [...DESTINATIONS];
+  let candidateDestinations = (customCandidates && customCandidates.length > 0) ? [...customCandidates] : [...DESTINATIONS];
 
   if (foodSafetyGate && foodSafetyGate.status === 'REJECT') {
     const altRoute = foodSafetyGate.alternativeRouteRecommendation?.route;

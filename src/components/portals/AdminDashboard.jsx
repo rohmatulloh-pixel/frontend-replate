@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
+  FileText,
+  Lock,
   ShieldCheck, 
   Truck, 
   CheckCircle2, 
@@ -13,6 +15,7 @@ import {
   Coins
 } from 'lucide-react';
 import Button from '../Button';
+import api from '../../services/api';
 import { getReports, loadDemoData, clearDemoData, isDemoMode } from '../../utils/storage';
 import { calculateRescuePerformance, getFoodDisplayName } from '../../utils/calculations';
 import { formatNumber, formatRupiah, formatDate } from '../../utils/formatters';
@@ -21,6 +24,20 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
   const isId = lang === 'id';
   const [reports, setReports] = useState(() => getReports());
   const [demoActive, setDemoActive] = useState(() => isDemoMode());
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    if (api.isLiveApiEnabled()) {
+      setLoadingLogs(true);
+      api.admin.getAuditLogs(1, 15).then(res => {
+        const list = res?.data?.logs || res?.logs || (Array.isArray(res?.data) ? res.data : []);
+        setAuditLogs(Array.isArray(list) ? list : []);
+      }).catch(err => {
+        console.warn('[REPLATE Admin] Audit log query warning:', err);
+      }).finally(() => setLoadingLogs(false));
+    }
+  }, []);
 
   const refreshState = () => {
     setReports(getReports());
@@ -299,6 +316,89 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
             </div>
           ))}
         </div>
+      </div>
+
+      {/* 5. Enterprise Security Audit Logs */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-card border border-slate-100 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-600" />
+              <h2 className="text-lg font-display font-black text-brand-900 tracking-tight">
+                {isId ? 'Jejak Audit Keamanan & Rekam Jejak Mutasi Sistem' : 'System Security Audit Trail & Mutation Logs'}
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 font-sans mt-1">
+              {isId
+                ? 'Seluruh mutasi status pengiriman, pembatalan darurat, penolakan fisik di lokasi, dan penghapusan data tercatat secara permanen di server.'
+                : 'Permanent immutable audit trail of cancellations, doorstep rejections, and state mutations.'}
+            </p>
+          </div>
+          <span className="text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-full border border-purple-200 shrink-0 flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5 text-purple-600" />
+            {isId ? 'Audit Trail Terverifikasi' : 'Verified Audit Trail'}
+          </span>
+        </div>
+
+        {loadingLogs ? (
+          <div className="py-8 text-center text-xs font-sans text-slate-400">
+            {isId ? 'Memuat log audit dari server backend...' : 'Loading audit logs from backend server...'}
+          </div>
+        ) : auditLogs.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-sans">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold tracking-wider">
+                  <th className="py-2.5 px-3">Waktu</th>
+                  <th className="py-2.5 px-3">Aksi</th>
+                  <th className="py-2.5 px-3">Aktor</th>
+                  <th className="py-2.5 px-3">Entitas / Modul</th>
+                  <th className="py-2.5 px-3">Keterangan / Alasan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {auditLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                      {formatDate(log.createdAt || log.timestamp)}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black font-display uppercase tracking-wider ${
+                        log.action === 'DELETE' || log.action === 'CANCEL' || log.action === 'PHYSICAL_REJECTION'
+                          ? 'bg-rose-100 text-rose-800'
+                          : log.action === 'CREATE'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700">
+                      {log.actor?.fullName || log.actor?.email || log.actorUserId || 'Sistem Admin'}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
+                      {log.tableName || log.entityType || 'SurplusListing'}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600 max-w-xs truncate">
+                      {log.reason || (log.details ? JSON.stringify(log.details) : '-')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+            <p className="text-xs text-slate-600 font-semibold">
+              {isId
+                ? 'Tidak ada anomali atau mutasi log mencurigakan. Seluruh aksi tercatat aman di PostgreSQL.'
+                : 'No anomalous audit events recorded. All transactions logged in PostgreSQL.'}
+            </p>
+            <p className="text-[11px] text-slate-400">
+              {isId ? 'Log akan terisi otomatis saat transaksi real-time berlangsung atau simulasi dijalankan.' : 'Logs populate dynamically as real-time transactions execute.'}
+            </p>
+          </div>
+        )}
       </div>
 
     </div>

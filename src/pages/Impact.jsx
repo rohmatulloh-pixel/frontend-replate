@@ -28,6 +28,7 @@ import {
 } from '../utils/formatters';
 import EmptyState from '../components/EmptyState';
 import Button from '../components/Button';
+import api from '../services/api';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
@@ -56,6 +57,20 @@ export default function Impact({ onNavigate, lang = getActiveLanguage() }) {
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [showEnvSection, setShowEnvSection] = useState(false);
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [backendAnalytics, setBackendAnalytics] = useState(null);
+
+  useEffect(() => {
+    if (api.isLiveApiEnabled()) {
+      api.analytics.getPerformance(currentLang).then(res => {
+        const data = res?.data || res;
+        if (data) {
+          setBackendAnalytics(data);
+        }
+      }).catch(err => {
+        console.warn('[REPLATE Analytics] Backend performance fetch warning:', err);
+      });
+    }
+  }, [currentLang]);
 
   useEffect(() => {
     const handleUpdate = () => {

@@ -27,6 +27,7 @@ import {
 } from '../utils/storage';
 import { getFoodDisplayName } from '../utils/calculations';
 import { formatDate } from '../utils/formatters';
+import api from '../services/api';
 
 const FOOD_CATEGORY_OPTIONS = [
   { id: 'cooked_meals', labelId: 'Makanan Siap Santap / Nasi Kotak', labelEn: 'Ready-to-Eat Cooked Meals', icon: '🍱', descId: 'Nasi, lauk pauk matang, sup, hidangan katering', descEn: 'Cooked rice, side dishes, soup, catering meals' },
@@ -189,6 +190,30 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
     setSelectedRequestForMatching(req);
     const candidates = findMatchingSurplusForRequest(req);
     setMatchingCandidates(candidates);
+
+    if (api.isLiveApiEnabled()) {
+      api.emergency.getMatchingSurplus(req.id).then(res => {
+        const remoteList = Array.isArray(res) ? res : (res?.data || []);
+        if (remoteList && remoteList.length > 0) {
+          const mappedRemote = remoteList.map(item => ({
+            id: item.id,
+            foodName: item.foodName,
+            quantity: Number(item.quantityKg) || item.portions || 1,
+            portions: item.portions || Math.round((Number(item.quantityKg) || 1) / 0.35),
+            foodSafetyGate: { status: item.safetyAssessment?.safetyStatus || 'PASS' },
+            reportedBy: { name: item.donorOrganization?.name || 'Supplier Terverifikasi' },
+            isLiveBackend: true
+          }));
+          setMatchingCandidates(prev => {
+            const ids = new Set(prev.map(p => p.id));
+            const fresh = mappedRemote.filter(m => !ids.has(m.id));
+            return [...prev, ...fresh];
+          });
+        }
+      }).catch(err => {
+        console.warn('[REPLATE Emergency] Remote surplus query warning:', err);
+      });
+    }
   };
 
   // Allocate a surplus item to this emergency request

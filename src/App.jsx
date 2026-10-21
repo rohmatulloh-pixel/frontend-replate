@@ -13,10 +13,11 @@ import Insights from './pages/Insights';
 import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
 import SOSHub from './pages/SOSHub';
+import Profile from './pages/Profile';
 import { saveReport, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
 
-const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency', 'sos'];
+const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency', 'sos', 'profile'];
 
 function getInitialPage() {
   if (typeof window !== 'undefined' && window.location.hash) {
@@ -198,6 +199,10 @@ export default function App() {
 
         {activePage === 'learn' && (
           <Learn onNavigate={navigateTo} lang={lang} />
+        )}
+
+        {activePage === 'profile' && (
+          <Profile onNavigate={navigateTo} lang={lang} />
         )}
 
         {/* Sensible Fallback for Invalid Page Identifiers */}

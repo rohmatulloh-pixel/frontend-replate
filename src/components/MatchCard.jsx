@@ -129,7 +129,13 @@ export default function MatchCard({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 py-4 text-xs font-display text-slate-700 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-brand-600 shrink-0" />
-          <span>{destination.demoDistanceKm} km {lang === 'id' ? 'jarak estimasi' : 'estimated distance'}</span>
+          <span>
+            {destination.demoDistanceKm} km{' '}
+            {destination.isLiveGpsDistance
+              ? (lang === 'id' ? '(GPS Riil)' : '(Live GPS)')
+              : (lang === 'id' ? 'jarak estimasi' : 'estimated distance')}
+            {destination.estimatedTransitMinutes ? ` • ~${destination.estimatedTransitMinutes} mnt` : ''}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-brand-600 shrink-0" />

@@ -110,6 +110,47 @@ export default function JourneyTimeline({
     });
   };
 
+  // Explicit Doorstep Physical Rejection by Recipient Mitra (Organoleptic / Temperature Breach)
+  const handleDoorstepRejection = () => {
+    if (!onAdvanceStatus) return;
+
+    const rejectionReasons = lang === 'id' ? [
+      'Gagal Organoleptik: Makanan berbau asam, berlendir, atau basi saat tiba',
+      'Kontaminasi Fisik: Kemasan pecah, bocor, atau segel terbuka di perjalanan',
+      'Pelanggaran Suhu: Rantai dingin/panas drop di luar batas toleransi (>4h / zone bahaya)',
+      'Melewati batas aman konsumsi saat kurir sampai di lokasi',
+      'Lainnya (alasan penolakan spesifik)'
+    ] : [
+      'Organoleptic Failure: Food smells sour, slimy, or spoiled on arrival',
+      'Physical Contamination: Packaging breached, torn, or unsealed in transit',
+      'Temperature Breach: Danger zone violation outside safe holding limits',
+      'Safe time window expired upon courier arrival',
+      'Other physical rejection reason'
+    ];
+
+    const promptTitle = lang === 'id'
+      ? `PENOLAKAN FISIK DI LOKASI MITRA (DOORSTEP REJECTION)\n\nPilih alasan penolakan organoleptik makanan:\n1. ${rejectionReasons[0]}\n2. ${rejectionReasons[1]}\n3. ${rejectionReasons[2]}\n4. ${rejectionReasons[3]}\n\nKetik nomor (1-4) atau tuliskan alasan penolakan:`
+      : `DOORSTEP PHYSICAL REJECTION (RECIPIENT INTAKE)\n\nSelect organoleptic failure reason:\n1. ${rejectionReasons[0]}\n2. ${rejectionReasons[1]}\n3. ${rejectionReasons[2]}\n4. ${rejectionReasons[3]}\n\nEnter number (1-4) or custom reason:`;
+
+    const input = window.prompt(promptTitle, rejectionReasons[0]);
+    if (!input || !input.trim()) return;
+
+    const trimmed = input.trim();
+    const finalReason = trimmed.length === 1 && !isNaN(trimmed) && rejectionReasons[Number(trimmed) - 1]
+      ? rejectionReasons[Number(trimmed) - 1]
+      : trimmed;
+
+    const recipientOrg = currentUser?.organization || currentUser?.name || 'Mitra Penerima';
+
+    onAdvanceStatus(report.id, 'CANCELLED', `Penolakan Fisik di Lokasi: ${finalReason} (Oleh: ${recipientOrg})`, {
+      isIncidentReport: true,
+      isDoorstepRejection: true,
+      cancellationReason: `[PENOLAKAN FISIK DI LOKASI] ${finalReason}`,
+      issueReportedBy: recipientOrg,
+      cancelledAt: new Date().toISOString()
+    });
+  };
+
   // Normal cancellation before delivery begins (pre-transit)
   const handleCancelPreTransit = () => {
     if (!onAdvanceStatus) return;

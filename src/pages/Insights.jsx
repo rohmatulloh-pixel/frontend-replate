@@ -5,6 +5,7 @@ import { generateInsights } from '../utils/calculations';
 import PreventionSimulator from '../components/PreventionSimulator';
 import EmptyState from '../components/EmptyState';
 import Button from '../components/Button';
+import api from '../services/api';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
 export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
@@ -23,6 +24,20 @@ export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.id;
   const isId = currentLang === 'id';
   const [reports, setReports] = useState(() => getReports());
+  const [backendInsights, setBackendInsights] = useState(null);
+
+  useEffect(() => {
+    if (api.isLiveApiEnabled()) {
+      api.analytics.getInsights(currentLang).then(res => {
+        const data = res?.data || res;
+        if (data) {
+          setBackendInsights(data);
+        }
+      }).catch(err => {
+        console.warn('[REPLATE Insights] Backend insights fetch warning:', err);
+      });
+    }
+  }, [currentLang]);
 
   useEffect(() => {
     const handleUpdate = () => setReports(getReports());
@@ -56,6 +71,25 @@ export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
           </Button>
         </div>
       </div>
+
+      {backendInsights && (
+        <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-6 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+            <Lightbulb className="w-4 h-4 text-emerald-600" />
+            <span>{isId ? 'Wawasan Analitik Server Backend PostgreSQL' : 'PostgreSQL Backend Server Analytics Insights'}</span>
+          </div>
+          <p className="text-xs text-slate-700 leading-relaxed">
+            {backendInsights.summary || backendInsights.message || (isId ? 'Sistem mendeteksi tren surplus aktif terverifikasi dari seluruh rantai pasok katering & hotel.' : 'Live aggregated food waste insights active.')}
+          </p>
+          {backendInsights.recommendations && (
+            <ul className="list-disc pl-5 text-xs text-slate-600 space-y-1">
+              {backendInsights.recommendations.map((rec, i) => (
+                <li key={i}>{typeof rec === 'string' ? rec : rec.text || JSON.stringify(rec)}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {!insights.hasData ? (
         <EmptyState

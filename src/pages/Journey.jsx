@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { getReports, updateJourneyStatus, deleteReport, loadDemoData, getCurrentUser } from '../utils/storage';
 import { getFoodDisplayName } from '../utils/calculations';
 import JourneyTimeline from '../components/JourneyTimeline';
@@ -32,6 +32,9 @@ export default function Journey({ onNavigate, lang = getActiveLanguage(), initia
 
   const [reports, setReports] = useState(() => getReports());
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const [selectedReportId, setSelectedReportId] = useState(() => {
     if (initialSelectedId) return initialSelectedId;
     const initial = getReports();
@@ -91,7 +94,19 @@ export default function Journey({ onNavigate, lang = getActiveLanguage(), initia
     if (activeFilter === 'COMPLETED') return r.journeyStatus === 'RECEIVED';
     if (activeFilter === 'CANCELLED') return r.journeyStatus === 'CANCELLED' || r.journeyStatus === 'EXPIRED';
     return true;
+  }).filter(r => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.foodName?.toLowerCase().includes(q) ||
+      r.reportedBy?.name?.toLowerCase().includes(q) ||
+      r.selectedDestination?.name?.toLowerCase().includes(q) ||
+      r.id?.toLowerCase().includes(q)
+    );
   });
+
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage) || 1;
+  const paginatedReports = filteredReports.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Ensure activeReport prioritizes the item in filtered list, fallback to first in filter
   const activeReport = filteredReports.find(r => r.id === selectedReportId) || filteredReports[0] || null;
@@ -105,6 +120,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage(), initia
 
   const handleFilterChange = (filterId) => {
     setActiveFilter(filterId);
+    setCurrentPage(1);
     const newFiltered = reports.filter(r => {
       if (filterId === 'ACTIVE') return r.journeyStatus !== 'RECEIVED' && r.journeyStatus !== 'CANCELLED' && r.journeyStatus !== 'EXPIRED';
       if (filterId === 'COMPLETED') return r.journeyStatus === 'RECEIVED';
@@ -194,6 +210,21 @@ export default function Journey({ onNavigate, lang = getActiveLanguage(), initia
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Master List */}
           <div className="lg:col-span-5 space-y-4">
+                        {/* Search Bar */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder={isId ? 'Cari nama makanan, donor, atau mitra...' : 'Search food, donor, or recipient...'}
+                className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-sans shadow-2xs"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            </div>
+
             {/* Filter Pills with 100% Readable Uniform Shapes */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 border-b border-slate-100 text-xs font-display">
               <span className="text-slate-500 font-extrabold mr-1 shrink-0">Filter:</span>
@@ -222,7 +253,7 @@ export default function Journey({ onNavigate, lang = getActiveLanguage(), initia
 
             {/* List of Journeys */}
             <div className="space-y-3">
-              {filteredReports.map((rep) => {
+              {paginatedReports.map((rep) => {
                 const isSelected = activeReport?.id === rep.id;
                 const isDone = rep.journeyStatus === 'RECEIVED';
                 const isCancelled = rep.journeyStatus === 'CANCELLED' || rep.journeyStatus === 'EXPIRED';
