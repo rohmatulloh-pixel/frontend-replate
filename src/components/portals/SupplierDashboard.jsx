@@ -64,7 +64,7 @@ export default function SupplierDashboard({ onNavigate, lang = 'id', currentUser
               icon={Plus}
               className="w-full sm:w-auto text-xs px-6 py-3 shadow-sun font-display font-black"
             >
-              {isId ? '+ Lapor Surplus Makanan Baru ✨' : '+ Log New Surplus Food ✨'}
+              {isId ? '+ Lapor Surplus Makanan Baru' : '+ Log New Surplus Food'}
             </Button>
 
             <Button

@@ -511,7 +511,7 @@ export default function LoginModal({
                 size="sm"
                 className="w-full text-xs font-display font-black py-2.5 shadow-sun"
               >
-                {isId ? 'Daftar & Masuk Sekarang ✨' : 'Register & Enter Dashboard ✨'}
+                {isId ? 'Daftar & Masuk Sekarang' : 'Register & Enter Dashboard'}
               </Button>
             </div>
 

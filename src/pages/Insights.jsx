@@ -52,7 +52,7 @@ export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
             onClick={() => onNavigate('report')}
             className="text-xs px-5 py-2.5 shadow-sun font-display font-extrabold"
           >
-            {t.nav.reportButton} ✨
+            {t.nav.reportButton}
           </Button>
         </div>
       </div>

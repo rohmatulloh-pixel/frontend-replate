@@ -300,7 +300,7 @@ export default function EditSafetyModal({
             size="sm"
             className="text-xs font-display font-black shadow-sun px-5 py-2"
           >
-            {isId ? 'Simpan & Evaluasi Ulang ✨' : 'Save & Re-Evaluate ✨'}
+            {isId ? 'Simpan & Evaluasi Ulang' : 'Save & Re-Evaluate'}
           </Button>
         </div>
       </div>

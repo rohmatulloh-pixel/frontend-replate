@@ -410,7 +410,7 @@ export default function Learn({ onNavigate, lang = getActiveLanguage() }) {
           icon={ArrowRight}
           iconPosition="right"
         >
-          {isId ? 'Mulai Lapor Surplus ✨' : 'Start Reporting Surplus ✨'}
+          {isId ? 'Mulai Lapor Surplus' : 'Start Reporting Surplus'}
         </Button>
       </div>
     </div>

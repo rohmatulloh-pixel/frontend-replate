@@ -26,7 +26,7 @@ export const TRANSLATIONS = {
       usernamePlaceholder: 'admin / supplier / mitra',
       passwordLabel: 'Kata Sandi',
       passwordPlaceholder: 'Masukkan kata sandi',
-      submitBtn: 'Masuk ke Akun ✨',
+      submitBtn: 'Masuk ke Akun',
       switchRoleBtn: 'Ganti Peran',
       loggedInAs: 'Masuk sebagai',
       quickFillLabel: 'Pilihan Akun Demo (Klik untuk Isi Cepat):',
@@ -42,7 +42,7 @@ export const TRANSLATIONS = {
     // Home Page
     home: {
       badge: 'Makanan Harus Bergerak. Bukan Terbuang!',
-      heroTitle: 'Beri Makanan Surplus Rute Berguna ✨',
+      heroTitle: 'Beri Makanan Surplus Rute Berguna',
       heroSubtitle: 'Platform pintar dan deterministik yang membantu surplus makanan menemukan rute terbaik sebelum basi dan menjadi sampah.',
       startNow: 'Mulai Selamatkan Pangan',
       viewJourneys: 'Lihat Pengiriman Aktif 🚚',
@@ -65,7 +65,7 @@ export const TRANSLATIONS = {
       reviewsSubtitle: 'Ulasan langsung dari pengelola dapur, relawan, dan manajer katering.',
       ctaTitle: 'Siap Menyelamatkan Makanan Hari Ini?',
       ctaSubtitle: 'Laporkan sisa makanan dari dapur, restoran, atau acaramu sekarang juga.',
-      ctaBtn: 'Lapor Makanan Surplus Sekarang ✨',
+      ctaBtn: 'Lapor Makanan Surplus Sekarang',
     },
     // Food Streams
     streams: {
@@ -99,7 +99,7 @@ export const TRANSLATIONS = {
       f6Placeholder: 'Contoh: Disimpan dalam wadah tertutup food-grade, suhu terjaga, bebas alergen...',
       unitKg: 'Kilogram (KG)',
       unitPortions: 'Porsi Makan',
-      submitBtn: 'Hitung Rute Penyelamatan ✨',
+      submitBtn: 'Hitung Rute Penyelamatan',
       calculating: 'Menghitung Viabilitas...',
       qtyPlaceholder: 'Contoh: 8.0',
       defaultNotes: 'Disimpan dalam wadah tertutup bersih food-grade dengan suhu aman.',
@@ -200,7 +200,7 @@ export const TRANSLATIONS = {
       badgeOperational: 'Data Operasional Aktual (Local-First)',
       badgeDemo: 'Mode Simulasi (Data Demo)',
       clearDemoBtn: 'Bersihkan Data Demo',
-      loadDemoBtn: 'Muat Data Simulasi (Uji Coba) ✨',
+      loadDemoBtn: 'Muat Data Simulasi (Uji Coba)',
       kpi1Title: 'Total Surplus Dilaporkan',
       kpi1Sub: 'Total berat surplus pangan yang telah dicatat dalam sistem',
       kpi2Title: 'Pangan Berhasil Disalurkan',
@@ -300,7 +300,7 @@ export const TRANSLATIONS = {
       usernamePlaceholder: 'admin / supplier / mitra',
       passwordLabel: 'Password',
       passwordPlaceholder: 'Enter password',
-      submitBtn: 'Log in to Account ✨',
+      submitBtn: 'Log in to Account',
       switchRoleBtn: 'Switch Role',
       loggedInAs: 'Signed in as',
       quickFillLabel: 'Demo Accounts (Click to Quick-Fill):',
@@ -316,7 +316,7 @@ export const TRANSLATIONS = {
     // Home Page
     home: {
       badge: 'Food Should Move. Not Waste!',
-      heroTitle: 'Give Surplus Food Another Route ✨',
+      heroTitle: 'Give Surplus Food Another Route',
       heroSubtitle: 'A smart and deterministic platform helping surplus food find its next useful route before it turns to waste.',
       startNow: 'Start Rescuing Food',
       viewJourneys: 'See Active Journeys 🚚',
@@ -339,7 +339,7 @@ export const TRANSLATIONS = {
       reviewsSubtitle: 'Direct feedback from community chefs, volunteers, and surplus managers.',
       ctaTitle: 'Ready to Rescue Surplus Food Today?',
       ctaSubtitle: 'Report surplus food from your commercial kitchen, catering, or event now.',
-      ctaBtn: 'Report Surplus Food Now ✨',
+      ctaBtn: 'Report Surplus Food Now',
     },
     // Food Streams
     streams: {
@@ -373,7 +373,7 @@ export const TRANSLATIONS = {
       f6Placeholder: 'e.g. Stored in clean gastro pans, hot holding verified, allergy notations...',
       unitKg: 'Kilograms (KG)',
       unitPortions: 'Portions / Servings',
-      submitBtn: 'Assess Surplus Now ✨',
+      submitBtn: 'Assess Surplus Now',
       calculating: 'Calculating Viability...',
       qtyPlaceholder: 'e.g. 8.0',
       defaultNotes: 'Stored in clean food-grade covered containers at safe temperature.',
@@ -474,7 +474,7 @@ export const TRANSLATIONS = {
       badgeOperational: 'Actual Operational Data (Local-First)',
       badgeDemo: 'Simulation Mode (Demo Data)',
       clearDemoBtn: 'Clear Demo Data',
-      loadDemoBtn: 'Load Simulation Data ✨',
+      loadDemoBtn: 'Load Simulation Data',
       kpi1Title: 'Total Reported Surplus',
       kpi1Sub: 'Total weight of surplus logged in system',
       kpi2Title: 'Food Rescued & Received',

@@ -45,8 +45,12 @@ export default function Footer({ onNavigate }) {
             {/* Brand Column */}
             <div className="md:col-span-5 space-y-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full bg-white text-brand-800 flex items-center justify-center text-xl shadow-md">
-                  🍲
+                <div className="h-10 px-2 py-1 rounded-2xl bg-white flex items-center justify-center shadow-md">
+                  <img
+                    src="/replate-logo.png"
+                    alt="REPLATE"
+                    className="h-7 w-auto object-contain"
+                  />
                 </div>
                 <span className="text-2xl font-display font-black tracking-tight text-white">
                   REPLATE
@@ -58,7 +62,7 @@ export default function Footer({ onNavigate }) {
                   : 'A smart platform directing surplus food into nourishing meals for communities in need rather than landfill waste.'}
               </p>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-display text-teal-200">
-                <Sparkles className="w-3.5 h-3.5 text-sun-400" />
+                <Heart className="w-3.5 h-3.5 text-emerald-300" />
                 <span>Food Should Move. Not Waste.</span>
               </div>
             </div>

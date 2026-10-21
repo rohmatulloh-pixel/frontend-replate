@@ -185,19 +185,20 @@ export default function Navbar({ activePage, onNavigate }) {
         {/* Brand Logo */}
         <div
           onClick={() => handleNavClick('home')}
-          className="flex items-center gap-2 cursor-pointer group select-none shrink-0"
+          className="flex items-center gap-2.5 cursor-pointer group select-none shrink-0"
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-500 to-sky-400 text-white flex items-center justify-center shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-            <span className="text-lg">🍲</span>
+          <div className="h-9 px-2 py-1 rounded-2xl bg-teal-50/90 border border-teal-200/80 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+            <img
+              src="/replate-logo.png"
+              alt="REPLATE"
+              className="h-6 w-auto object-contain"
+            />
           </div>
 
           <div>
-            <div className="flex items-center gap-1">
-              <span className="text-lg sm:text-xl font-display font-black tracking-tight text-brand-900 group-hover:text-brand-600 transition-colors">
-                REPLATE
-              </span>
-              <span className="text-amber-500 text-xs">✨</span>
-            </div>
+            <span className="text-lg sm:text-xl font-display font-black tracking-tight text-brand-900 group-hover:text-brand-600 transition-colors">
+              REPLATE
+            </span>
           </div>
         </div>
 
@@ -430,7 +431,7 @@ export default function Navbar({ activePage, onNavigate }) {
                 className="w-full py-2.5 px-4 rounded-2xl text-xs font-display font-black bg-sun-400 hover:bg-sun-500 text-amber-950 border-2 border-sun-300 shadow-sun flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <span>👤</span>
-                <span>{isId ? 'Masuk / Daftar Akun ✨' : 'Sign In / Register ✨'}</span>
+                <span>{isId ? 'Masuk / Daftar Akun' : 'Sign In / Register'}</span>
               </button>
             </div>
           ) : (

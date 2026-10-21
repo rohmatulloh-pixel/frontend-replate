@@ -45,15 +45,16 @@ export default function Home({ onNavigate, lang = getActiveLanguage() }) {
       <section className="relative pt-6 sm:pt-10 pb-16 px-4 sm:px-6 lg:px-8 bg-[#F0F9FF] overflow-hidden">
         <div className="absolute top-10 left-10 text-3xl opacity-30 select-none animate-pulse">☁️</div>
         <div className="absolute top-20 right-16 text-4xl opacity-30 select-none animate-pulse">☁️</div>
-        <div className="absolute top-8 right-1/4 text-xl select-none">✨</div>
-        <div className="absolute top-1/3 left-1/4 text-xl select-none">⭐</div>
+        {/* Subtle ambient lighting without stars */}
 
         <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10">
           {/* Top Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 shadow-sm border border-sky-200 text-xs font-display font-bold text-brand-800">
-            <span className="text-amber-500">✨</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 shadow-sm border border-emerald-200 text-xs font-display font-bold text-emerald-900">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
             <span>{t.home.badge}</span>
-            <span className="text-amber-500">✨</span>
           </div>
 
           {/* Heading */}
@@ -72,7 +73,7 @@ export default function Home({ onNavigate, lang = getActiveLanguage() }) {
               variant="sun"
               size="lg"
               onClick={() => onNavigate('report')}
-              icon={Sparkles}
+              icon={ArrowRight}
               iconPosition="right"
               className="w-full sm:w-auto text-sm px-8 py-3.5 shadow-sun"
             >
@@ -98,7 +99,7 @@ export default function Home({ onNavigate, lang = getActiveLanguage() }) {
               </div>
               <span className="hidden sm:inline text-slate-300">•</span>
               <div className="flex items-center gap-1.5 text-amber-900">
-                <span>⭐</span>
+                <span>⚡</span>
                 <span>{t.home.trust.deterministic}</span>
               </div>
               <span className="hidden sm:inline text-slate-300">•</span>
@@ -244,10 +245,10 @@ export default function Home({ onNavigate, lang = getActiveLanguage() }) {
                 variant="sun"
                 size="md"
                 onClick={() => onNavigate('report')}
-                icon={Sparkles}
+                icon={ArrowRight}
                 className="text-xs px-6 py-2.5 font-display font-black shadow-sun"
               >
-                {t.nav.reportButton} ✨
+                {t.nav.reportButton}
               </Button>
             </div>
           </div>
@@ -278,7 +279,7 @@ export default function Home({ onNavigate, lang = getActiveLanguage() }) {
             {/* Banner Text Content */}
             <div className="md:col-span-7 space-y-4 text-center md:text-left">
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-500 text-white font-display font-bold text-xs shadow-sm">
-                <span>⭐</span>
+                <span>⚡</span>
                 <span>{t.home.featuredBadge}</span>
               </div>
 

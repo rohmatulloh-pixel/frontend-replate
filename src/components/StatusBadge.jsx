@@ -6,7 +6,7 @@ export function PriorityBadge({ priority, className = '', lang = getActiveLangua
     return (
       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black font-display tracking-wide uppercase bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-sm ${className}`}>
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-        ⭐ {lang === 'id' ? 'Prioritas Tinggi' : 'High Priority'}
+        {lang === 'id' ? 'Prioritas Tinggi' : 'High Priority'}
       </span>
     );
   }

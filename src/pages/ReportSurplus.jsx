@@ -774,7 +774,7 @@ export default function ReportSurplus({ onSubmitReport, lang = getActiveLanguage
             iconPosition="right"
             className="w-full sm:w-auto text-sm px-8 py-3.5 shadow-sun font-display font-black"
           >
-            {isId ? 'Lanjutkan ke Food Safety Gate & Penilaian ✨' : 'Proceed to Food Safety Gate & Assessment ✨'}
+            {isId ? 'Lanjutkan ke Food Safety Gate & Penilaian' : 'Proceed to Food Safety Gate & Assessment'}
           </Button>
         </div>
       </form>
