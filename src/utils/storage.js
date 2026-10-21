@@ -31,7 +31,9 @@ export const STORAGE_KEYS = {
   REGISTERED_USERS: 'replate_registered_users_v1',
   EMERGENCY_REQUESTS: 'replate_emergency_requests_v1',
   DELETED_REPORT_IDS: 'replate_deleted_report_ids_v1',
-  DELETED_EMERGENCY_IDS: 'replate_deleted_emergency_ids_v1'
+  DELETED_EMERGENCY_IDS: 'replate_deleted_emergency_ids_v1',
+  SOS_BROADCASTS: 'replate_sos_broadcasts_v1',
+  SOS_RESPONSES: 'replate_sos_responses_v1'
 };
 
 // Custom event to sync components upon storage updates
@@ -316,9 +318,46 @@ export function saveReport(report) {
 
       // Async sync to NestJS Backend API if enabled
       if (api.isLiveApiEnabled()) {
-        saveReportToBackend(newReport).catch((err) => {
-          console.warn('[REPLATE Backend API] Background surplus creation warning:', err);
-        });
+        (async () => {
+          try {
+            await ensureApiToken();
+            const dto = mapReportToBackendDto(newReport);
+            const createdRes = await api.surplus.create(dto);
+            const backendListing = createdRes?.data || createdRes;
+
+            // If a destination was selected, immediately assign it to trigger backend Journey creation
+            if (backendListing?.id && newReport.selectedDestination) {
+              const recipientUuid = (typeof newReport.selectedDestination.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(newReport.selectedDestination.id))
+                ? newReport.selectedDestination.id
+                : '20000000-0000-0000-0000-000000000001';
+
+              try {
+                const assignRes = await api.surplus.assignDestination(
+                  backendListing.id,
+                  recipientUuid,
+                  `Dialokasikan ke: ${newReport.selectedDestination.name || 'Dapur Sosial Barokah Matraman'}`
+                );
+                const journey = assignRes?.data || assignRes;
+
+                // Sync local report IDs with backend UUIDs to prevent duplication
+                const curUsers = getUserReports();
+                const idx = curUsers.findIndex(r => r.id === newReport.id);
+                if (idx !== -1) {
+                  curUsers[idx].id = backendListing.id;
+                  curUsers[idx].journeyId = journey?.id || backendListing.id;
+                  curUsers[idx].journeyStatus = 'MATCHED';
+                  localStorage.setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(curUsers));
+                  dispatchStorageEvent();
+                }
+              } catch (assignErr) {
+                console.warn('[REPLATE Backend API] Assign destination warning:', assignErr);
+              }
+            }
+            await syncBackendSurplusToLocal();
+          } catch (err) {
+            console.warn('[REPLATE Backend API] Surplus creation warning:', err);
+          }
+        })();
       }
     }
 
@@ -330,96 +369,19 @@ export function saveReport(report) {
 }
 
 /**
- * Direct async submission to NestJS Backend API with strict error propagation
- */
-export async function saveReportToBackend(report) {
-  const gateResult = evaluateFoodSafetyGate(report);
-  const isHumanRoute = !report.recommendedRoute || ['REDISTRIBUTE', 'PROCESS', 'HUMAN'].includes(report.recommendedRoute);
-  if (gateResult.status === 'REJECT' && isHumanRoute && !report.selectedDestination?.preferredRoutes?.includes('ORGANIC')) {
-    throw new Error('Makanan berstatus REJECT tidak dapat disalurkan untuk konsumsi manusia.');
-  }
-
-  // If live backend API is disabled, fall back to synchronous local saveReport
-  if (!api.isLiveApiEnabled()) {
-    return saveReport(report);
-  }
-
-  await ensureApiToken();
-  if (!api.getAuthToken()) {
-    throw new Error('Autentikasi gagal. Sesi masuk Anda ke backend telah kedaluwarsa.');
-  }
-
-  const dto = mapReportToBackendDto(report);
-  const createdRes = await api.surplus.create(dto);
-  const backendListing = createdRes?.data || createdRes;
-
-  if (!backendListing?.id) {
-    throw new Error('Gagal menerima konfirmasi ID listing dari Backend API.');
-  }
-
-  let finalJourneyId = backendListing.id;
-  let finalStatus = 'REPORTED';
-
-  if (report.selectedDestination) {
-    const recipientUuid = (typeof report.selectedDestination.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(report.selectedDestination.id))
-      ? report.selectedDestination.id
-      : '20000000-0000-0000-0000-000000000001';
-
-    try {
-      const assignRes = await api.surplus.assignDestination(
-        backendListing.id,
-        recipientUuid,
-        `Dialokasikan ke: ${report.selectedDestination.name || 'Dapur Sosial Barokah Matraman'}`
-      );
-      const journey = assignRes?.data || assignRes;
-      if (journey?.id) {
-        finalJourneyId = journey.id;
-        finalStatus = 'MATCHED';
-      }
-    } catch (assignErr) {
-      console.warn('[REPLATE Backend API] Assign destination warning:', assignErr);
-    }
-  }
-
-  // Pull all backend records to update local cache
-  await syncBackendSurplusToLocal().catch(() => {});
-
-  const newReport = {
-    ...report,
-    id: backendListing.id,
-    journeyId: finalJourneyId,
-    journeyStatus: finalStatus,
-    foodSafetyGate: gateResult,
-    isDemo: false
-  };
-
-  return newReport;
-}
-
-/**
  * Ensures an active auth token for background API requests
  */
 export async function ensureApiToken() {
   if (api.getAuthToken()) return true;
   try {
     const session = getCurrentUser();
-    let email = 'supplier@replate.id';
-    let pw = 'supplier123';
-
-    if (session?.role === 'admin') {
-      email = 'admin@replate.id';
-      pw = 'admin123';
-    } else if (session?.role === 'mitra') {
-      email = 'mitra@replate.id';
-      pw = 'mitra123';
-    } else if (session?.email && session.email.includes('@replate.id')) {
-      email = session.email;
-    }
-
+    const email = session?.role === 'supplier' || session?.email === 'catering@replate.id'
+      ? 'supplier@replate.id'
+      : (session?.email || 'supplier@replate.id');
+    const pw = session?.role === 'admin' ? 'admin123' : (session?.role === 'mitra' ? 'mitra123' : 'supplier123');
     await api.auth.login(email, pw);
     return Boolean(api.getAuthToken());
-  } catch (err) {
-    console.warn('[REPLATE Backend] ensureApiToken warning:', err);
+  } catch {
     return false;
   }
 }
@@ -455,7 +417,12 @@ export function updateReport(id, updates) {
               if (updates.journeyStatus === 'RECEIVED') {
                 await api.journeys.confirmReceipt(journeyId, updates.actualReceivedKg || userReports[uIdx].quantity, updates.note);
               } else if (updates.journeyStatus === 'CANCELLED') {
-                await api.journeys.cancel(journeyId, updates.cancellationReason || 'Cancelled by user');
+                await api.journeys.cancel(journeyId, {
+                  cancellationReason: updates.cancellationReason || 'Cancelled by user',
+                  isIncidentReport: Boolean(updates.isIncidentReport),
+                  issueReportedBy: updates.issueReportedBy || undefined,
+                  note: updates.note || undefined,
+                });
               } else if (updates.journeyStatus) {
                 await api.journeys.advanceStatus(journeyId, updates.journeyStatus, updates.note);
               }
@@ -670,6 +637,8 @@ export function clearAllData() {
     localStorage.removeItem(STORAGE_KEYS.LEGACY_REPORTS);
     localStorage.removeItem(STORAGE_KEYS.DELETED_REPORT_IDS);
     localStorage.removeItem(STORAGE_KEYS.DELETED_EMERGENCY_IDS);
+    localStorage.removeItem(STORAGE_KEYS.SOS_BROADCASTS);
+    localStorage.removeItem(STORAGE_KEYS.SOS_RESPONSES);
     dispatchStorageEvent();
     return true;
   } catch (err) {
@@ -1174,6 +1143,11 @@ export function registerUser({ username, email, password, name, organization, ro
       syncUserToSupabase(newUser).catch((err) => {
         console.warn('[REPLATE Storage] Background user sync warning:', err);
       });
+      if (api.isLiveApiEnabled && api.isLiveApiEnabled()) {
+        api.auth.register(newUser).catch((err) => {
+          console.warn('[REPLATE Backend Auth] Background register warning:', err);
+        });
+      }
     }
 
     // Automatically create active user session
@@ -1275,56 +1249,10 @@ export function loginUser(identifier, password) {
   }
 }
 
+/**
+ * Asynchronously log in a user with Supabase Cloud real-time check fallback
+ */
 export async function loginUserAsync(identifier, password) {
-  const cleanId = String(identifier || '').trim().toLowerCase();
-  const cleanPw = String(password || '').trim();
-
-  // 1. If live NestJS Backend API is enabled, authenticate with server first
-  if (isRealBrowserEnvironment() && api.isLiveApiEnabled()) {
-    try {
-      const emailMap = {
-        'admin': 'admin@replate.id',
-        'supplier': 'supplier@replate.id',
-        'mitra': 'mitra@replate.id',
-      };
-      const emailToUse = emailMap[cleanId] || cleanId;
-      const authData = await api.auth.login(emailToUse, cleanPw);
-      const backendUser = authData?.user || authData;
-      const role = backendUser?.role ? backendUser.role.toLowerCase() : (cleanId.includes('admin') ? 'admin' : (cleanId.includes('mitra') ? 'mitra' : 'supplier'));
-
-      const sessionUser = {
-        id: backendUser?.id || `usr-${Date.now()}`,
-        username: cleanId,
-        email: backendUser?.email || emailToUse,
-        name: backendUser?.fullName || backendUser?.name || 'Pengguna REPLATE',
-        organization: backendUser?.organization?.name || 'Organisasi Terdaftar',
-        role: role,
-        loginAt: new Date().toISOString()
-      };
-
-      localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(sessionUser));
-      localStorage.setItem('replate_active_role', role);
-      dispatchAuthEvent(sessionUser);
-
-      // Sync backend surplus data to local
-      await syncBackendSurplusToLocal().catch(() => {});
-
-      return { success: true, user: sessionUser };
-    } catch (err) {
-      console.warn('[REPLATE Backend Auth] Direct backend login failed:', err);
-      // If error is 401 or invalid credentials, return explicit error
-      if (err.status === 401 || err.message?.toLowerCase().includes('tidak sesuai')) {
-        return { success: false, message: 'Email atau kata sandi tidak sesuai dengan backend API.' };
-      }
-      // If network error, return clear error message
-      if (err.isNetworkError || err.status === 0) {
-        return { success: false, message: `Gagal terhubung ke backend API (${api.getBaseUrl()}). Periksa koneksi internet Anda atau server sedang cold-start.` };
-      }
-      return { success: false, message: err.message || 'Terjadi kesalahan autentikasi backend.' };
-    }
-  }
-
-  // 2. Fallback to local / demo users for offline / test mode
   let res = loginUser(identifier, password);
   if (res.success) return res;
 
@@ -1507,11 +1435,36 @@ export function saveEmergencyRequest(requestData) {
 
   const updated = [newRequest, ...existing];
   localStorage.setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(updated));
+
+  try {
+    publishSOSBroadcast(newRequest);
+  } catch (err) {
+    console.warn('[REPLATE Storage] Auto publish SOS broadcast warning:', err);
+  }
+
   dispatchStorageEvent();
 
   // Async sync to Supabase Cloud in background (real browser only)
   if (isRealBrowserEnvironment()) {
     syncEmergencyRequestToSupabase(newRequest).catch(() => {});
+    if (api.isLiveApiEnabled && api.isLiveApiEnabled()) {
+      api.emergency?.create?.({
+        neededFoodType: newRequest.neededFoodType,
+        foodTypeName: newRequest.foodTypeName,
+        requestedPortions: Number(newRequest.requestedPortions),
+        beneficiaryCount: Number(newRequest.beneficiaryCount),
+        beneficiaryGroup: newRequest.beneficiaryGroup,
+        targetLocation: newRequest.targetLocation,
+        urgencyLevel: newRequest.urgencyLevel,
+        urgencyDeadline: newRequest.urgencyDeadline,
+        urgencyReason: newRequest.urgencyReason,
+        contactPerson: newRequest.contactPerson,
+        contactPhone: newRequest.contactPhone,
+        notes: newRequest.notes
+      })?.catch((err) => {
+        console.warn('[REPLATE Backend Emergency] Create sync warning:', err);
+      });
+    }
   }
 
   return newRequest;
@@ -1538,6 +1491,15 @@ export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
   // Async sync to Supabase Cloud in background (real browser only)
   if (isRealBrowserEnvironment()) {
     syncEmergencyRequestToSupabase(existing[idx]).catch(() => {});
+    if (api.isLiveApiEnabled && api.isLiveApiEnabled()) {
+      api.emergency?.updateStatus?.(id, newStatus, extraData?.cancelReason)?.catch((err) => {
+        console.warn('[REPLATE Backend Emergency] Status update sync warning:', err);
+      });
+    }
+  }
+
+  if (newStatus === 'FULFILLED' || newStatus === 'CANCELLED') {
+    fulfillSOSBroadcast(id);
   }
 
   return existing[idx];
@@ -1548,6 +1510,7 @@ export function updateEmergencyRequestStatus(id, newStatus, extraData = {}) {
  */
 export function deleteEmergencyRequest(id) {
   recordDeletedEmergencyId(id);
+  fulfillSOSBroadcast(id);
   const existing = getEmergencyRequests();
   const filtered = existing.filter(r => r.id !== id);
   if (filtered.length !== existing.length) {
@@ -1624,8 +1587,299 @@ export function allocateSurplusToEmergencyRequest(requestId, reportId, recipient
     matchedAt: new Date().toISOString()
   });
 
+  if (isRealBrowserEnvironment() && api.isLiveApiEnabled && api.isLiveApiEnabled()) {
+    api.emergency?.allocate?.(requestId, reportId, `Dialokasikan untuk Permintaan Darurat: ${requestId}`)?.catch((err) => {
+      console.warn('[REPLATE Backend Emergency] Allocate sync warning:', err);
+    });
+  }
+
   dispatchStorageEvent();
   return { success: true, report: updatedReport };
+}
+
+/**
+ * Calculate broadcast expiry timestamp
+ */
+export function calculateSOSExpiry(urgencyLevel) {
+  const now = Date.now();
+  if (urgencyLevel === 'CRITICAL') {
+    return new Date(now + 2 * 60 * 60 * 1000).toISOString();
+  }
+  if (urgencyLevel === 'HIGH') {
+    return new Date(now + 4 * 60 * 60 * 1000).toISOString();
+  }
+  // MEDIUM: end of current day in WIB (UTC+7)
+  const d = new Date(now + 7 * 60 * 60 * 1000);
+  const endOfDayUtc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 16, 59, 59, 999));
+  return (endOfDayUtc.getTime() > now ? endOfDayUtc : new Date(endOfDayUtc.getTime() + 24 * 60 * 60 * 1000)).toISOString();
+}
+
+/**
+ * Retrieve all raw broadcasts from storage
+ */
+export function getAllSOSBroadcasts() {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SOS_BROADCASTS);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Expire broadcasts that passed expiresAt
+ */
+export function expireOverdueSOSBroadcasts() {
+  const all = getAllSOSBroadcasts();
+  const now = Date.now();
+  let changed = false;
+
+  const updated = all.map((b) => {
+    if (b.status === 'ACTIVE' && new Date(b.expiresAt || 0).getTime() <= now) {
+      changed = true;
+      return { ...b, status: 'EXPIRED', updatedAt: new Date().toISOString() };
+    }
+    return b;
+  });
+
+  if (changed && typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(updated));
+    dispatchStorageEvent();
+  }
+  return updated;
+}
+
+/**
+ * Publish a new SOS Broadcast from an emergency request
+ */
+export function publishSOSBroadcast(emergencyRequest) {
+  if (!emergencyRequest) return null;
+  const broadcasts = getAllSOSBroadcasts();
+
+  // Avoid creating duplicate for same emergencyRequestId
+  const existingIdx = broadcasts.findIndex(b => b.emergencyRequestId === emergencyRequest.id);
+  const expiresAt = calculateSOSExpiry(emergencyRequest.urgencyLevel);
+  const portions = Number(emergencyRequest.requestedPortions) || 10;
+  const targetQuantityKg = Number(emergencyRequest.estimatedKg) || Math.round(portions * 0.35 * 100) / 100;
+
+  const newBroadcast = {
+    id: `sos-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    emergencyRequestId: emergencyRequest.id,
+    recipientOrgName: emergencyRequest.requestedBy?.organization || emergencyRequest.requestedBy?.name || emergencyRequest.recipientOrg || 'Mitra Posko Darurat',
+    recipientLocation: emergencyRequest.targetLocation || 'Posko Darurat',
+    neededFoodType: emergencyRequest.neededFoodType || 'cooked_meals',
+    foodTypeName: emergencyRequest.foodTypeName || emergencyRequest.neededFoodType,
+    requestedPortions: portions,
+    targetQuantityKg,
+    urgencyLevel: emergencyRequest.urgencyLevel || 'CRITICAL',
+    urgencyDeadline: emergencyRequest.urgencyDeadline || 'Hari ini',
+    urgencyReason: emergencyRequest.urgencyReason || 'Kebutuhan pangan mendesak',
+    contactPerson: emergencyRequest.contactPerson || 'Koordinator Posko',
+    contactPhone: emergencyRequest.contactPhone || '0812-0000-0000',
+    radiusKm: 10,
+    expiresAt,
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIdx !== -1) {
+    broadcasts[existingIdx] = { ...broadcasts[existingIdx], ...newBroadcast, id: broadcasts[existingIdx].id };
+  } else {
+    broadcasts.unshift(newBroadcast);
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+    dispatchStorageEvent();
+  }
+
+  return newBroadcast;
+}
+
+/**
+ * Get active, unexpired broadcasts
+ */
+export function getActiveSOSBroadcasts() {
+  expireOverdueSOSBroadcasts();
+  const all = getAllSOSBroadcasts();
+  const now = Date.now();
+
+  return all.filter((b) => b.status === 'ACTIVE' && new Date(b.expiresAt || 0).getTime() > now);
+}
+
+/**
+ * Retrieve supplier response history
+ */
+export function getSOSHistory(supplierOrgId = null) {
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SOS_RESPONSES);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    const arr = Array.isArray(list) ? list : [];
+    if (!supplierOrgId) return arr;
+    return arr.filter(r => r.supplierOrgId === supplierOrgId);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Respond to an active SOS Broadcast as a supplier
+ */
+export function respondToSOSBroadcast(broadcastId, notes = '', actingUser = null) {
+  const broadcasts = getAllSOSBroadcasts();
+  const idx = broadcasts.findIndex(b => b.id === broadcastId);
+  if (idx === -1) return { success: false, error: 'Siaran SOS tidak ditemukan' };
+
+  const broadcast = broadcasts[idx];
+  if (broadcast.status !== 'ACTIVE') {
+    return { success: false, error: `Siaran SOS sudah tidak aktif (${broadcast.status})` };
+  }
+  if (new Date(broadcast.expiresAt).getTime() <= Date.now()) {
+    broadcasts[idx].status = 'EXPIRED';
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+      dispatchStorageEvent();
+    }
+    return { success: false, error: 'Siaran SOS telah kedaluwarsa' };
+  }
+
+  const user = actingUser || getCurrentUser();
+  const supplierOrgName = user?.organization || user?.name || 'Penyedia Surplus Katering';
+  const supplierOrgId = user?.organizationId || user?.id || 'usr-supplier';
+
+  // 1. Create emergency SurplusListing in local reports
+  const portions = Number(broadcast.requestedPortions) || 20;
+  const quantity = Number(broadcast.targetQuantityKg) || Math.round(portions * 0.35 * 100) / 100;
+
+  const newReport = saveReport({
+    foodName: broadcast.foodTypeName || 'Makanan Siap Santap Darurat',
+    foodTypeId: 'cooked-rice',
+    quantity,
+    unit: 'kg',
+    portions,
+    sourceContextId: 'Catering',
+    conditionId: 'suitable',
+    safetyConditionId: 'no_visible_damage',
+    storageHistoryId: 'known_compliant',
+    packagingConditionId: 'intact_proper',
+    handlingIntegrityId: 'hygienic_separated',
+    storageTempId: 'hot_holding_above_60',
+    timeWindowId: 'under_2h',
+    storageTemp: 65,
+    packagingStatus: 'intact_proper',
+    hygieneAdequate: true,
+    storageHistoryKnown: true,
+    isPreparedToday: true,
+    recommendedRoute: 'REDISTRIBUTE',
+    rescueScore: 92,
+    isEmergencyResponse: true,
+    notes: notes ? `[RESPONS DARURAT SOS] ${notes}` : '[RESPONS DARURAT SOS] Atestasi donor: Makanan aman, higienis, dan layak konsumsi.',
+    selectedDestination: {
+      id: 'dest-emergency-posko',
+      name: broadcast.recipientOrgName,
+      type: 'Posko Darurat',
+      address: broadcast.recipientLocation,
+      contactPerson: broadcast.contactPerson,
+      contactPhone: broadcast.contactPhone,
+    },
+    recipientPartner: broadcast.recipientOrgName,
+    journeyStatus: 'MATCHED',
+    reportedBy: {
+      id: user?.id || 'usr-supplier',
+      name: supplierOrgName,
+      role: 'supplier',
+      organization: supplierOrgName,
+    },
+  });
+
+  // 2. Mark broadcast as RESPONDED
+  broadcasts[idx] = {
+    ...broadcasts[idx],
+    status: 'RESPONDED',
+    respondedAt: new Date().toISOString(),
+    respondedBy: {
+      supplierOrgId,
+      supplierOrgName,
+      supplierUserId: user?.id,
+      surplusReportId: newReport.id,
+      notes,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+  }
+
+  // 3. Update emergency request status to ALLOCATED
+  if (broadcast.emergencyRequestId) {
+    updateEmergencyRequestStatus(broadcast.emergencyRequestId, 'ALLOCATED', {
+      matchedSurplusId: newReport.id,
+      matchedSurplusName: newReport.foodName,
+      matchedAt: new Date().toISOString(),
+    });
+  }
+
+  // 4. Save response to SOS history
+  const history = getSOSHistory();
+  const responseEntry = {
+    id: `resp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    broadcastId: broadcast.id,
+    emergencyRequestId: broadcast.emergencyRequestId,
+    recipientOrgName: broadcast.recipientOrgName,
+    recipientLocation: broadcast.recipientLocation,
+    foodTypeName: broadcast.foodTypeName,
+    requestedPortions: broadcast.requestedPortions,
+    targetQuantityKg: broadcast.targetQuantityKg,
+    urgencyLevel: broadcast.urgencyLevel,
+    supplierOrgId,
+    supplierOrgName,
+    surplusReportId: newReport.id,
+    notes,
+    respondedAt: new Date().toISOString(),
+    journeyStatus: 'MATCHED',
+  };
+  history.unshift(responseEntry);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.SOS_RESPONSES, JSON.stringify(history));
+  }
+
+  dispatchStorageEvent();
+
+  // Async sync to Backend API if live
+  if (isRealBrowserEnvironment() && api.isLiveApiEnabled && api.isLiveApiEnabled()) {
+    api.emergencyBroadcasts?.respond?.(broadcastId, { notes })?.catch((err) => {
+      console.warn('[REPLATE Backend SOS] Respond sync warning:', err);
+    });
+  }
+
+  return {
+    success: true,
+    message: 'Konfirmasi bantuan darurat berhasil disimpan!',
+    report: newReport,
+    response: responseEntry,
+  };
+}
+
+/**
+ * Fulfill SOS broadcast when emergency request is fulfilled
+ */
+export function fulfillSOSBroadcast(broadcastId) {
+  const broadcasts = getAllSOSBroadcasts();
+  const idx = broadcasts.findIndex(b => b.id === broadcastId || b.emergencyRequestId === broadcastId);
+  if (idx !== -1) {
+    broadcasts[idx].status = 'FULFILLED';
+    broadcasts[idx].updatedAt = new Date().toISOString();
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SOS_BROADCASTS, JSON.stringify(broadcasts));
+      dispatchStorageEvent();
+    }
+  }
 }
 
 /**

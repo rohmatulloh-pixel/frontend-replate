@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronDown, LogOut, RefreshCw, User as UserIcon } from 'lucide-react';
-import { getReports, isDemoMode, clearDemoData, getCurrentUser, logoutUser } from '../utils/storage';
+import { getReports, isDemoMode, clearDemoData, getCurrentUser, logoutUser, getActiveSOSBroadcasts, getEmergencyRequests } from '../utils/storage';
 import { TRANSLATIONS, getActiveLanguage, setActiveLanguage } from '../utils/i18n';
 import LoginModal from './LoginModal';
 
@@ -49,6 +49,16 @@ export default function Navbar({ activePage, onNavigate }) {
     return reports.filter(r => r.journeyStatus !== 'RECEIVED').length;
   });
 
+  const [hasActiveSOS, setHasActiveSOS] = useState(() => {
+    try {
+      const activeBroadcasts = getActiveSOSBroadcasts();
+      const openRequests = getEmergencyRequests().filter(r => r.status === 'OPEN');
+      return activeBroadcasts.length > 0 || openRequests.length > 0;
+    } catch {
+      return false;
+    }
+  });
+
   const t = TRANSLATIONS[lang] || TRANSLATIONS.id;
 
   useEffect(() => {
@@ -58,6 +68,13 @@ export default function Navbar({ activePage, onNavigate }) {
       setActiveCount(active);
       setDemoActive(isDemoMode());
       setCurrentUser(getCurrentUser());
+      try {
+        const activeBroadcasts = getActiveSOSBroadcasts();
+        const openRequests = getEmergencyRequests().filter(r => r.status === 'OPEN');
+        setHasActiveSOS(activeBroadcasts.length > 0 || openRequests.length > 0);
+      } catch {
+        setHasActiveSOS(false);
+      }
     };
 
     const syncLanguage = (e) => {
@@ -118,6 +135,7 @@ export default function Navbar({ activePage, onNavigate }) {
     if (currentUser?.role === 'supplier') {
       return [
         { id: 'home', label: isId ? 'Beranda Dapur' : 'Kitchen Hub' },
+        { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS },
         { id: 'report', label: isId ? 'Lapor Surplus' : 'Log Surplus' },
         { id: 'journeys', label: isId ? 'Penyaluran Makanan' : 'Outbound Dispatch', badge: activeCount > 0 ? activeCount : null },
         { id: 'impact', label: isId ? 'Dampak Katering' : 'Kitchen Impact' },
@@ -127,15 +145,16 @@ export default function Navbar({ activePage, onNavigate }) {
     if (currentUser?.role === 'mitra') {
       return [
         { id: 'home', label: isId ? 'Beranda Mitra' : 'Receiver Hub' },
+        { id: 'emergency', label: isId ? 'Distribusi Darurat' : 'Emergency Requests', isSOS: true, hasDot: hasActiveSOS },
         { id: 'journeys', label: isId ? 'Pasokan Masuk' : 'Inbound Intake', badge: activeCount > 0 ? activeCount : null },
         { id: 'impact', label: isId ? 'Dampak Bantuan' : 'Distribution Impact' },
-        { id: 'emergency', label: isId ? 'Distribusi Darurat' : 'Emergency Requests' },
         { id: 'learn', label: isId ? 'Standar Kelayakan' : 'Intake Standards' },
       ];
     }
     if (currentUser?.role === 'admin') {
       return [
         { id: 'home', label: isId ? 'Control Room' : 'Control Room' },
+        { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS },
         { id: 'journeys', label: isId ? 'Monitoring Logistik' : 'Fleet Monitor', badge: activeCount > 0 ? activeCount : null },
         { id: 'report', label: isId ? 'Lapor Surplus' : 'Report Surplus' },
         { id: 'impact', label: isId ? 'Analitik Kinerja' : 'City Impact' },
@@ -145,6 +164,7 @@ export default function Navbar({ activePage, onNavigate }) {
     }
     return [
       { id: 'home', label: t.nav.home },
+      { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS },
       { id: 'report', label: t.nav.report },
       { id: 'journeys', label: t.nav.journeys, badge: activeCount > 0 ? activeCount : null },
       { id: 'impact', label: t.nav.impact },
@@ -196,7 +216,15 @@ export default function Navbar({ activePage, onNavigate }) {
                     : 'text-slate-600 hover:text-brand-700 hover:bg-slate-100/70 border-2 border-transparent'
                 }`}
               >
-                <span>{link.label}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span>{link.label}</span>
+                  {link.hasDot && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                  )}
+                </span>
                 {link.badge && (
                   <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-sun-500 text-amber-950 font-bold shadow-xs">
                     {link.badge}
@@ -469,7 +497,15 @@ export default function Navbar({ activePage, onNavigate }) {
                       : 'text-slate-700 hover:bg-slate-50 border-2 border-transparent'
                   }`}
                 >
-                  <span>{link.label}</span>
+                  <span className="flex items-center gap-2">
+                    <span>{link.label}</span>
+                    {link.hasDot && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      </span>
+                    )}
+                  </span>
                   {link.badge && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-sun-500 text-amber-950 font-bold">
                       {link.badge} {t.nav.activeBadge}

@@ -12,11 +12,11 @@ import Impact from './pages/Impact';
 import Insights from './pages/Insights';
 import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
-import { saveReport, saveReportToBackend, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
+import SOSHub from './pages/SOSHub';
+import { saveReport, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
-import api from './services/api';
 
-const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency'];
+const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency', 'sos'];
 
 function getInitialPage() {
   if (typeof window !== 'undefined' && window.location.hash) {
@@ -99,27 +99,17 @@ export default function App() {
   };
 
   // Handle destination selection from Assessment
-  const handleDestinationSelected = async (fullReportWithDestination) => {
-    try {
-      let saved;
-      if (api.isLiveApiEnabled()) {
-        saved = await saveReportToBackend(fullReportWithDestination);
-      } else {
-        saved = saveReport(fullReportWithDestination);
-      }
-      setPendingReport(null);
-      if (saved?.id) {
-        setSelectedJourneyId(saved.journeyId || saved.id);
-      }
-      setActivePage('journeys');
-      if (typeof window !== 'undefined') {
-        window.location.hash = 'journeys';
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      console.error('[REPLATE Backend API] Gagal menyimpan surplus:', err);
-      alert(`Gagal mengirim laporan surplus ke Backend API Rakha: ${err.message || 'Terjadi kesalahan jaringan'}.\n\nData Anda tetap tersimpan di formulir ini.`);
+  const handleDestinationSelected = (fullReportWithDestination) => {
+    const saved = saveReport(fullReportWithDestination);
+    setPendingReport(null);
+    if (saved?.id) {
+      setSelectedJourneyId(saved.id);
     }
+    setActivePage('journeys');
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'journeys';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Handle navigation
@@ -156,6 +146,14 @@ export default function App() {
 
         {activePage === 'emergency' && (
           <EmergencyDistribution
+            onNavigate={navigateTo}
+            lang={lang}
+            currentUser={currentUser}
+          />
+        )}
+
+        {activePage === 'sos' && (
+          <SOSHub
             onNavigate={navigateTo}
             lang={lang}
             currentUser={currentUser}

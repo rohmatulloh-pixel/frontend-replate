@@ -153,8 +153,8 @@ export default function EmergencyDistribution({ onNavigate, lang = 'id', current
 
       showNotification(
         isId 
-          ? `Permintaan darurat (${newReq.requestedPortions} porsi) berhasil dibuat! Status: MENUNGGU PENCOCOKAN.`
-          : `Emergency request (${newReq.requestedPortions} portions) logged! Status: OPEN.`
+          ? `Permintaan darurat (${newReq.requestedPortions} porsi) berhasil dibuat! Sinyal SOS otomatis disiarkan ke penyedia surplus terdekat.`
+          : `Emergency request (${newReq.requestedPortions} portions) logged! SOS broadcast automatically dispatched to nearby suppliers.`
       );
 
       // Reset form fields

@@ -19,10 +19,7 @@ export function normalizeApiUrl(rawUrl) {
   return url;
 }
 
-export const USE_BACKEND_API = typeof import.meta !== 'undefined'
-  ? (String(import.meta.env?.VITE_USE_BACKEND_API).toLowerCase() === 'true' || import.meta.env?.VITE_USE_BACKEND_API === true || import.meta.env?.VITE_USE_BACKEND_API === '1')
-  : false;
-
+export const USE_BACKEND_API = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_USE_BACKEND_API !== 'false') : false;
 export const BASE_URL = normalizeApiUrl(
   typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_BASE_URL : null
 );
@@ -43,28 +40,17 @@ export const setAuthToken = (token) => {
 export const getAuthToken = () => authToken;
 
 async function request(endpoint, options = {}) {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const fullUrl = `${BASE_URL}${cleanEndpoint}`;
-
   const headers = {
     'Content-Type': 'application/json',
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     ...options.headers,
   };
 
-  let response;
-  try {
-    response = await fetch(fullUrl, {
-      ...options,
-      headers,
-      credentials: 'include', // Sends HttpOnly cookie for refresh token
-    });
-  } catch (netErr) {
-    const error = new Error(`Gagal terhubung ke backend API (${fullUrl}): ${netErr.message || 'Koneksi jaringan terputus atau server sedang cold-start'}`);
-    error.status = 0;
-    error.isNetworkError = true;
-    throw error;
-  }
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include', // Sends HttpOnly cookie for refresh token
+  });
 
   // Handle token expired (401)
   if (response.status === 401 && !options._retry && !endpoint.includes('/auth/login')) {
@@ -75,8 +61,7 @@ async function request(endpoint, options = {}) {
       });
       if (refreshResponse.ok) {
         const refreshData = await refreshResponse.json();
-        const newToken = refreshData.data?.accessToken || refreshData.accessToken;
-        setAuthToken(newToken);
+        setAuthToken(refreshData.data?.accessToken || refreshData.accessToken);
         options._retry = true;
         return request(endpoint, options);
       }
@@ -88,10 +73,9 @@ async function request(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const errorMsg = data.message || (Array.isArray(data.message) ? data.message.join(', ') : 'Terjadi kesalahan pada permintaan API');
-    const error = new Error(errorMsg);
+    const error = new Error(data.message || 'Terjadi kesalahan pada permintaan API');
     error.status = response.status;
-    error.details = data.details || data.error;
+    error.details = data.details;
     throw error;
   }
 
@@ -106,11 +90,13 @@ export const api = {
   isLiveApiEnabled: () => USE_BACKEND_API,
   getBaseUrl: () => BASE_URL,
 
-  // Health / Connection check using public endpoint
+  // Health / Connection check
   checkHealth: async () => {
     try {
-      const res = await fetch(`${BASE_URL}/health`);
-      return res.ok;
+      const res = await fetch(`${BASE_URL}/auth/me`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+      });
+      return res.status !== 502 && res.status !== 503;
     } catch {
       return false;
     }
@@ -122,6 +108,23 @@ export const api = {
       const data = await request('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
+      });
+      if (data?.accessToken) {
+        setAuthToken(data.accessToken);
+      }
+      return data;
+    },
+    register: async (payload) => {
+      const data = await request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: payload.username,
+          email: payload.email,
+          password: payload.password,
+          name: payload.name,
+          organizationName: payload.organization || payload.organizationName,
+          role: (payload.role || 'supplier').toUpperCase(),
+        }),
       });
       if (data?.accessToken) {
         setAuthToken(data.accessToken);
@@ -162,38 +165,15 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ recipientId, notes }),
       }),
+    delete: (listingId) =>
+      request(`/surplus-listings/${listingId}`, {
+        method: 'DELETE',
+      }),
   },
 
   // --- 3. Recipient Capacities ---
   recipients: {
     getMyCapacity: () => request('/recipients/my-capacity'),
-    findAll: () => request('/recipients'),
-    findOne: (id) => request(`/recipients/${id}`),
-  },
-
-  // --- 4. Emergency Requests ---
-  emergency: {
-    create: (payload) =>
-      request('/emergency-requests', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }),
-    findAll: (params = {}) => {
-      const qs = new URLSearchParams(params).toString();
-      return request(`/emergency-requests${qs ? `?${qs}` : ''}`);
-    },
-    findOne: (id) => request(`/emergency-requests/${id}`),
-    updateStatus: (id, statusData) =>
-      request(`/emergency-requests/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify(statusData),
-      }),
-    allocate: (id, surplusId, surplusName) =>
-      request(`/emergency-requests/${id}/allocate`, {
-        method: 'POST',
-        body: JSON.stringify({ surplusId, surplusName }),
-      }),
-    delete: (id) => request(`/emergency-requests/${id}`, { method: 'DELETE' }),
   },
 
   // --- 4. Rescue Journeys & Doorstep Logistics ---
@@ -218,16 +198,68 @@ export const api = {
           notes: notes || undefined,
         }),
       }),
-    cancel: (journeyId, cancellationReason) =>
-      request(`/journeys/${journeyId}/cancel`, {
+    cancel: (journeyId, payload) => {
+      const body = typeof payload === 'string'
+        ? { cancellationReason: payload }
+        : {
+            cancellationReason: payload?.cancellationReason || 'Dibatalkan oleh pengguna',
+            isIncidentReport: Boolean(payload?.isIncidentReport),
+            issueReportedBy: payload?.issueReportedBy || undefined,
+            note: payload?.note || undefined,
+          };
+      return request(`/journeys/${journeyId}/cancel`, {
         method: 'POST',
-        body: JSON.stringify({
-          cancellationReason: cancellationReason || 'Dibatalkan oleh pengguna',
-        }),
+        body: JSON.stringify(body),
+      });
+    },
+  },
+
+  // --- 5. Emergency Distribution ---
+  emergency: {
+    create: (payload) =>
+      request('/emergency-requests', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    findAll: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return request(`/emergency-requests${qs ? `?${qs}` : ''}`);
+    },
+    getById: (id) => request(`/emergency-requests/${id}`),
+    getMatchingSurplus: (id) => request(`/emergency-requests/${id}/matching-surplus`),
+    allocate: (id, surplusListingId, notes) =>
+      request(`/emergency-requests/${id}/allocate`, {
+        method: 'POST',
+        body: JSON.stringify({ surplusListingId, notes }),
+      }),
+    updateStatus: (id, status, cancelReason) =>
+      request(`/emergency-requests/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, cancelReason }),
+      }),
+    delete: (id) =>
+      request(`/emergency-requests/${id}`, {
+        method: 'DELETE',
       }),
   },
 
-  // --- 5. Performance Analytics & Insights ---
+  // --- 6. Emergency Broadcasts (SOS) ---
+  emergencyBroadcasts: {
+    getActive: () => request('/emergency-broadcasts/active'),
+    getMyResponses: () => request('/emergency-broadcasts/my-responses'),
+    respond: (broadcastId, payload = {}) =>
+      request(`/emergency-broadcasts/${broadcastId}/respond`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    updateStatus: (broadcastId, status) =>
+      request(`/emergency-broadcasts/${broadcastId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }),
+  },
+
+  // --- 7. Performance Analytics & Insights ---
   analytics: {
     getPerformance: (lang = 'id') => request(`/analytics/performance?lang=${lang}`),
     getInsights: (lang = 'id') => request(`/analytics/insights?lang=${lang}`),
