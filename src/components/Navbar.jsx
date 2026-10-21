@@ -134,42 +134,89 @@ export default function Navbar({ activePage, onNavigate }) {
   const navLinks = (() => {
     if (currentUser?.role === 'supplier') {
       return [
-        { id: 'home', label: isId ? 'Beranda Dapur' : 'Kitchen Hub' },
-        { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS },
-        { id: 'report', label: isId ? 'Lapor Surplus' : 'Log Surplus' },
-        { id: 'journeys', label: isId ? 'Penyaluran Makanan' : 'Outbound Dispatch', badge: activeCount > 0 ? activeCount : null },
-        { id: 'impact', label: isId ? 'Dampak Katering' : 'Kitchen Impact' },
-        { id: 'learn', label: isId ? 'SOP Sanitasi' : 'Kitchen SOP' },
+        { id: 'home', label: isId ? 'Beranda Dapur' : 'Kitchen Hub', fullLabel: isId ? 'Beranda Dapur' : 'Kitchen Hub' },
+        { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS, fullLabel: 'SOS' },
+        { id: 'report', label: isId ? 'Lapor Surplus' : 'Log Surplus', fullLabel: isId ? 'Lapor Surplus' : 'Log Surplus' },
+        {
+          id: 'journeys',
+          label: (
+            <>
+              <span className="hidden 2xl:inline">{isId ? 'Penyaluran ' : 'Outbound '}</span>
+              <span>{isId ? 'Makanan' : 'Dispatch'}</span>
+            </>
+          ),
+          fullLabel: isId ? 'Penyaluran Makanan' : 'Outbound Dispatch',
+          badge: activeCount > 0 ? activeCount : null
+        },
+        { id: 'impact', label: isId ? 'Dampak Katering' : 'Kitchen Impact', fullLabel: isId ? 'Dampak Katering' : 'Kitchen Impact' },
+        { id: 'learn', label: isId ? 'SOP Sanitasi' : 'Kitchen SOP', fullLabel: isId ? 'SOP Sanitasi' : 'Kitchen SOP' },
       ];
     }
     if (currentUser?.role === 'mitra') {
       return [
-        { id: 'home', label: isId ? 'Beranda Mitra' : 'Receiver Hub' },
-        { id: 'emergency', label: isId ? 'Distribusi Darurat' : 'Emergency Requests', isSOS: true, hasDot: hasActiveSOS },
-        { id: 'journeys', label: isId ? 'Pasokan Masuk' : 'Inbound Intake', badge: activeCount > 0 ? activeCount : null },
-        { id: 'impact', label: isId ? 'Dampak Bantuan' : 'Distribution Impact' },
-        { id: 'learn', label: isId ? 'Standar Kelayakan' : 'Intake Standards' },
+        { id: 'home', label: isId ? 'Beranda Mitra' : 'Receiver Hub', fullLabel: isId ? 'Beranda Mitra' : 'Receiver Hub' },
+        { id: 'emergency', label: isId ? 'Distribusi Darurat' : 'Emergency Requests', isSOS: true, hasDot: hasActiveSOS, fullLabel: isId ? 'Distribusi Darurat' : 'Emergency Requests' },
+        { id: 'journeys', label: isId ? 'Pasokan Masuk' : 'Inbound Intake', fullLabel: isId ? 'Pasokan Masuk' : 'Inbound Intake', badge: activeCount > 0 ? activeCount : null },
+        { id: 'impact', label: isId ? 'Dampak Bantuan' : 'Distribution Impact', fullLabel: isId ? 'Dampak Bantuan' : 'Distribution Impact' },
+        {
+          id: 'learn',
+          label: (
+            <>
+              <span className="hidden 2xl:inline">{isId ? 'Standar ' : 'Intake '}</span>
+              <span>{isId ? 'Kelayakan' : 'Standards'}</span>
+            </>
+          ),
+          fullLabel: isId ? 'Standar Kelayakan' : 'Intake Standards'
+        },
       ];
     }
     if (currentUser?.role === 'admin') {
       return [
-        { id: 'home', label: isId ? 'Control Room' : 'Control Room' },
-        { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS },
-        { id: 'journeys', label: isId ? 'Monitoring Logistik' : 'Fleet Monitor', badge: activeCount > 0 ? activeCount : null },
-        { id: 'report', label: isId ? 'Lapor Surplus' : 'Report Surplus' },
-        { id: 'impact', label: isId ? 'Analitik Kinerja' : 'City Impact' },
-        { id: 'insights', label: isId ? 'Pusat Simulasi' : 'Simulator' },
-        { id: 'learn', label: isId ? 'Metodologi' : 'Methodology' },
+        { id: 'home', label: 'Control Room', fullLabel: 'Control Room' },
+        { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS, fullLabel: 'SOS' },
+        {
+          id: 'journeys',
+          label: (
+            <>
+              <span className="hidden 2xl:inline">{isId ? 'Monitoring ' : 'Fleet '}</span>
+              <span>{isId ? 'Logistik' : 'Monitor'}</span>
+            </>
+          ),
+          fullLabel: isId ? 'Monitoring Logistik' : 'Fleet Monitor',
+          badge: activeCount > 0 ? activeCount : null
+        },
+        { id: 'report', label: isId ? 'Lapor Surplus' : 'Report Surplus', fullLabel: isId ? 'Lapor Surplus' : 'Report Surplus' },
+        {
+          id: 'impact',
+          label: (
+            <>
+              <span className="hidden 2xl:inline">{isId ? 'Analitik ' : 'City '}</span>
+              <span>{isId ? 'Kinerja' : 'Impact'}</span>
+            </>
+          ),
+          fullLabel: isId ? 'Analitik Kinerja' : 'City Impact'
+        },
+        {
+          id: 'insights',
+          label: (
+            <>
+              <span className="hidden 2xl:inline">{isId ? 'Pusat ' : ''}</span>
+              <span>{isId ? 'Simulasi' : 'Simulator'}</span>
+            </>
+          ),
+          fullLabel: isId ? 'Pusat Simulasi' : 'Simulator'
+        },
+        { id: 'learn', label: isId ? 'Metodologi' : 'Methodology', fullLabel: isId ? 'Metodologi' : 'Methodology' },
       ];
     }
     return [
-      { id: 'home', label: t.nav.home },
-      { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS },
-      { id: 'report', label: t.nav.report },
-      { id: 'journeys', label: t.nav.journeys, badge: activeCount > 0 ? activeCount : null },
-      { id: 'impact', label: t.nav.impact },
-      { id: 'insights', label: t.nav.insights },
-      { id: 'learn', label: t.nav.learn },
+      { id: 'home', label: t.nav.home, fullLabel: t.nav.home },
+      { id: 'sos', label: 'SOS', isSOS: true, hasDot: hasActiveSOS, fullLabel: 'SOS' },
+      { id: 'report', label: t.nav.report, fullLabel: t.nav.report },
+      { id: 'journeys', label: t.nav.journeys, fullLabel: t.nav.journeys, badge: activeCount > 0 ? activeCount : null },
+      { id: 'impact', label: t.nav.impact, fullLabel: t.nav.impact },
+      { id: 'insights', label: t.nav.insights, fullLabel: t.nav.insights },
+      { id: 'learn', label: t.nav.learn, fullLabel: t.nav.learn },
     ];
   })();
 
@@ -180,8 +227,8 @@ export default function Navbar({ activePage, onNavigate }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 pt-3 px-3 sm:px-6 transition-all">
-      <div className="max-w-7xl mx-auto bg-white/95 backdrop-blur-md rounded-full shadow-card border border-white/80 py-2 px-4 sm:px-6 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-50 pt-2.5 sm:pt-3 px-2 sm:px-4 xl:px-6 transition-all">
+      <div className="w-full max-w-[1440px] mx-auto bg-white/95 backdrop-blur-md rounded-full shadow-card border border-white/80 py-1.5 sm:py-2 px-3 sm:px-4 xl:px-5 flex items-center justify-between gap-1.5 sm:gap-2">
         {/* Brand Logo */}
         <div
           onClick={() => handleNavClick('home')}
@@ -203,7 +250,7 @@ export default function Navbar({ activePage, onNavigate }) {
         </div>
 
         {/* Center Pill Nav Links */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 shrink min-w-0">
+        <nav className="hidden xl:flex items-center gap-1 2xl:gap-1.5 shrink min-w-0">
           {navLinks.map((link) => {
             const isActive = activePage === link.id;
             return (
@@ -211,14 +258,14 @@ export default function Navbar({ activePage, onNavigate }) {
                 key={link.id}
                 type="button"
                 onClick={() => handleNavClick(link.id)}
-                className={`px-2.5 xl:px-3.5 py-1.5 rounded-full text-xs font-display font-extrabold whitespace-nowrap transition-all relative ${
+                className={`px-2 2xl:px-3 py-1.5 rounded-full text-[11px] 2xl:text-xs font-display font-extrabold whitespace-nowrap transition-all relative shrink-0 ${
                   isActive
                     ? 'bg-teal-50 text-brand-800 border-2 border-brand-400 shadow-xs'
                     : 'text-slate-600 hover:text-brand-700 hover:bg-slate-100/70 border-2 border-transparent'
                 }`}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  <span>{link.label}</span>
+                  <span>{link.fullLabel || link.label}</span>
                   {link.hasDot && (
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -237,9 +284,9 @@ export default function Navbar({ activePage, onNavigate }) {
         </nav>
 
         {/* Right Action Buttons - Strictly lg:flex to avoid overlapping on tablets/laptop split view */}
-        <div className="hidden lg:flex items-center gap-1.5 xl:gap-2 shrink-0">
+        <div className="hidden xl:flex items-center gap-1.5 2xl:gap-2 shrink-0">
           {demoActive && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-display font-extrabold bg-amber-50 text-amber-900 border border-amber-300 shrink-0">
+            <div className="flex items-center gap-1 px-2 py-0.5 2xl:px-2.5 2xl:py-1 rounded-full text-[10px] 2xl:text-[11px] font-display font-extrabold bg-amber-50 text-amber-900 border border-amber-300 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
               <span>{lang === 'id' ? 'Simulasi' : 'Demo'}</span>
               <button
@@ -257,11 +304,11 @@ export default function Navbar({ activePage, onNavigate }) {
           <button
             type="button"
             onClick={toggleLanguage}
-            className="flex items-center bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full p-0.5 xl:p-1 text-xs font-display font-extrabold transition-all shadow-inner shrink-0"
+            className="flex items-center bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full p-0.5 text-[11px] 2xl:text-xs font-display font-extrabold transition-all shadow-inner shrink-0"
             title="Switch Language / Ganti Bahasa"
           >
             <span
-              className={`px-2 xl:px-2.5 py-0.5 xl:py-1 rounded-full transition-all flex items-center gap-1 ${
+              className={`px-1.5 2xl:px-2 py-0.5 rounded-full transition-all flex items-center gap-1 ${
                 lang === 'id'
                   ? 'bg-brand-500 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -297,11 +344,11 @@ export default function Navbar({ activePage, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="px-2.5 xl:px-3 py-1.5 rounded-full text-xs font-display font-extrabold bg-teal-50 hover:bg-teal-100/80 text-brand-950 border-2 border-brand-400/80 shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
+                className="px-2 2xl:px-2.5 py-1 rounded-full text-xs font-display font-extrabold bg-teal-50 hover:bg-teal-100/80 text-brand-950 border border-brand-400/80 shadow-xs transition-all flex items-center gap-1 active:scale-95 shrink-0"
               >
                 <span className="text-sm">{currentUser.avatar}</span>
-                <span className="max-w-[85px] xl:max-w-[115px] truncate">{currentUser.name}</span>
-                <span className="text-[10px] bg-brand-500 text-white font-black px-1.5 py-0.2 rounded-full uppercase">
+                <span className="hidden 2xl:inline max-w-[80px] truncate">{currentUser.name}</span>
+                <span className="text-[9px] 2xl:text-[10px] bg-brand-500 text-white font-black px-1.5 py-0.5 rounded-full uppercase">
                   {currentUser.role}
                 </span>
                 <ChevronDown className="w-3 h-3 text-slate-500 ml-0.5" />
@@ -364,7 +411,7 @@ export default function Navbar({ activePage, onNavigate }) {
         </div>
 
         {/* Mobile Hamburger, Lang Switcher & User Avatar (< lg) */}
-        <div className="flex items-center gap-1.5 lg:hidden">
+        <div className="flex items-center gap-1.5 xl:hidden">
           {/* Mobile User Pill */}
           <button
             type="button"
@@ -418,7 +465,7 @@ export default function Navbar({ activePage, onNavigate }) {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden mt-2 bg-white rounded-3xl shadow-card border border-slate-100 p-4 space-y-3 animate-fadeIn max-w-md mx-auto">
+        <div className="xl:hidden mt-2 bg-white rounded-3xl shadow-card border border-slate-100 p-4 space-y-3 animate-fadeIn max-w-md mx-auto">
           {/* Mobile Auth Header in Drawer */}
           {!currentUser ? (
             <div className="pb-2 border-b border-slate-100">

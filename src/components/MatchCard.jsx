@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, MapPin, Clock, ShieldCheck, ArrowRight, Sparkles, Lock, AlertTriangle } from 'lucide-react';
+import { Check, MapPin, Clock, ShieldCheck, ArrowRight, Lock, AlertTriangle } from 'lucide-react';
 import Button from './Button';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 
@@ -77,7 +77,7 @@ export default function MatchCard({
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {isBestMatch && !isRestrictedToCompost && (
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-sun-400 text-amber-950 font-display font-extrabold text-xs shadow-xs">
-            <Sparkles className="w-3.5 h-3.5" />
+            <ShieldCheck className="w-3.5 h-3.5" />
             <span>{t.assessment.bestMatch}</span>
           </div>
         )}

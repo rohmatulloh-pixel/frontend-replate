@@ -12,7 +12,6 @@ import {
   ListFilter,
   Check,
   HeartHandshake,
-  Sparkles,
   Info
 } from 'lucide-react';
 import Button from '../components/Button';
@@ -163,7 +162,7 @@ export default function SOSHub({ onNavigate, lang = 'id', currentUser }) {
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white shadow-2xs border border-rose-300 text-xs font-display font-extrabold text-rose-900">
             <span className="animate-pulse">📡</span>
-            <span>{isId ? 'PORTAL SUPPLIER • PUSAT SIARAN SOS DARURAT' : 'SUPPLIER PORTAL • EMERGENCY SOS BROADCASTS'}</span>
+            <span>{activeUser?.role === 'admin' ? (isId ? 'KENDALI OPERASIONAL • SIARAN SOS DARURAT' : 'OPERATIONS CONTROL • SOS BROADCASTS') : activeUser?.role === 'mitra' ? (isId ? 'PORTAL MITRA • SIARAN SOS DARURAT' : 'RECIPIENT PORTAL • SOS BROADCASTS') : (isId ? 'PORTAL SUPPLIER • PUSAT SIARAN SOS DARURAT' : 'SUPPLIER PORTAL • EMERGENCY SOS BROADCASTS')}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-display font-black text-brand-900 tracking-tight leading-tight">
@@ -371,7 +370,7 @@ export default function SOSHub({ onNavigate, lang = 'id', currentUser }) {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => handleDismiss(b.id)}

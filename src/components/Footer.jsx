@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Sparkles, Send } from 'lucide-react';
+import { Heart, Send } from 'lucide-react';
 import { TRANSLATIONS, getActiveLanguage } from '../utils/i18n';
 import Button from './Button';
 

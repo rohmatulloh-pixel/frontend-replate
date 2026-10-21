@@ -194,7 +194,7 @@ export default function FoodSafetyGateCard({
         {status === 'REJECT' && alternativeRouteRecommendation && (
           <div className="p-5 sm:p-6 rounded-2xl bg-slate-900 text-white space-y-3">
             <div className="flex items-center gap-2 text-sun-300 font-display font-bold text-xs uppercase tracking-wider">
-              <Sparkles className="w-4 h-4 text-sun-400" />
+              <Recycle className="w-4 h-4 text-sun-400" />
               <span>{isId ? 'Rekomendasi Penanganan Alternatif Non-Konsumsi' : 'Non-Consumption Alternative Handling'}</span>
             </div>
 

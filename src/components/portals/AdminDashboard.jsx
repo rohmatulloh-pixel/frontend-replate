@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   Activity,
   Layers,
-  Sparkles
+  Coins
 } from 'lucide-react';
 import Button from '../Button';
 import { getReports, loadDemoData, clearDemoData, isDemoMode } from '../../utils/storage';
@@ -177,7 +177,7 @@ export default function AdminDashboard({ onNavigate, lang = 'id', currentUser })
               {isId ? 'Nilai Ekonomi Pangan' : 'Economic Value'}
             </span>
             <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-              <Sparkles className="w-4 h-4" />
+              <Coins className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-display font-black text-brand-900">

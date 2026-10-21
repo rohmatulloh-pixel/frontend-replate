@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, MapPin, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight } from 'lucide-react';
 import Button from '../components/Button';
 import { getReports } from '../utils/storage';
 import { getFoodDisplayName, getRouteDisplayName } from '../utils/calculations';
