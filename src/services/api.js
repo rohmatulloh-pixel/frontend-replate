@@ -24,7 +24,7 @@ export function normalizeApiUrl(rawUrl) {
   return url;
 }
 
-export const USE_BACKEND_API = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_USE_BACKEND_API !== 'false') : false;
+export const USE_BACKEND_API = true;
 export const BASE_URL = normalizeApiUrl(
   typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_BASE_URL : null
 );

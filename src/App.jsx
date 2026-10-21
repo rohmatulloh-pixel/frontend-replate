@@ -14,7 +14,7 @@ import Learn from './pages/Learn';
 import EmergencyDistribution from './pages/EmergencyDistribution';
 import SOSHub from './pages/SOSHub';
 import Profile from './pages/Profile';
-import { saveReport, getCurrentUser, initSupabaseCloudSync, syncBackendSurplusToLocal } from './utils/storage';
+import { saveReport, getCurrentUser, initBackendSync } from './utils/storage';
 import { getActiveLanguage } from './utils/i18n';
 
 const VALID_PAGES = ['home', 'report', 'assessment', 'journeys', 'impact', 'insights', 'learn', 'emergency', 'sos', 'profile'];
@@ -60,20 +60,14 @@ export default function App() {
     };
   }, []);
 
-  // Initialize Supabase Cloud Realtime Sync & Multi-Device Collaboration
+  // Initialize Pure Backend REST API + PostgreSQL Sync (auto-refresh every 10s)
   useEffect(() => {
-    // Instant initial sync and realtime listener
-    const cleanup = initSupabaseCloudSync();
-
-    // Auto-refresh fallback every 15 seconds to ensure HP and Laptop stay in sync even across mobile network shifts
+    initBackendSync().catch(() => {});
     const interval = setInterval(() => {
-      initSupabaseCloudSync().catch(() => {});
-    }, 15000);
+      initBackendSync().catch(() => {});
+    }, 10000);
 
-    return () => {
-      clearInterval(interval);
-      if (typeof cleanup === 'function') cleanup();
-    };
+    return () => clearInterval(interval);
   }, []);
 
   // Sync URL hash with activePage to support browser refresh & back/forward

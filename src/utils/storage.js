@@ -5,20 +5,16 @@
  */
 
 import { evaluateFoodSafetyGate } from '../engine/foodSafetyGate.js';
-import {
-  syncReportToSupabase,
-  deleteReportFromSupabase,
-  syncEmergencyRequestToSupabase,
-  deleteEmergencyRequestFromSupabase,
-  fetchRemoteSurplusReports,
-  fetchRemoteEmergencyRequests,
-  setupSupabaseRealtimeSubscriptions,
-  mapSupabaseRowToReport,
-  mapRowToEmergencyRequest,
-  syncUserToSupabase,
-  fetchRemoteUsers,
-  generateUUID
-} from './supabase.js';
+export function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 import api, { mapReportToBackendDto, mapBackendListingToReport } from '../services/api.js';
 
 export const STORAGE_KEYS = {
@@ -683,7 +679,6 @@ export function deleteReport(id) {
       dispatchStorageEvent();
 
       if (isRealBrowserEnvironment()) {
-        deleteReportFromSupabase(id).catch(() => {});
         if (api.isLiveApiEnabled()) {
           api.surplus?.delete?.(id)?.catch(() => {});
         }
@@ -1590,7 +1585,6 @@ export function deleteEmergencyRequest(id) {
     getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
     dispatchStorageEvent();
     if (isRealBrowserEnvironment()) {
-      deleteEmergencyRequestFromSupabase(id).catch(() => {});
       if (api.isLiveApiEnabled && api.isLiveApiEnabled()) {
         api.emergency?.delete?.(id)?.catch(() => {});
       }
@@ -1960,251 +1954,70 @@ export function fulfillSOSBroadcast(broadcastId) {
  * Fetches remote surplus reports & emergency requests, merges without data loss,
  * and attaches Realtime WebSocket listeners.
  */
-export async function initSupabaseCloudSync() {
+/**
+ * Synchronize datasets with REPLATE NestJS Backend REST API + PostgreSQL
+ * Pulls verified surplus listings and emergency requests directly from PostgreSQL
+ */
+export async function initBackendSync() {
   if (!isRealBrowserEnvironment()) return () => {};
-
   try {
-    // 1. If backend API toggle is explicitly enabled, sync from Render NestJS
-    if (api.isLiveApiEnabled()) {
-      syncBackendSurplusToLocal().catch(() => {});
-    }
-
-    // 2. Pure Supabase Cloud Surplus Sync (Bidirectional & Idempotent)
-    (async () => {
-      try {
-        const remoteReports = await fetchRemoteSurplusReports().catch(() => []);
-        const localUsers = getUserReports();
-        const deletedIds = getDeletedReportIds();
-        const remoteMap = new Map();
-        for (const r of (remoteReports || [])) {
-          if (r?.id) remoteMap.set(r.id, r);
-        }
-
-        let localChanged = false;
-        // Merge remote items into local
-        for (const r of (remoteReports || [])) {
-          // If deleted locally, never resurrect into localStorage!
-          if (deletedIds.has(r.id)) {
-            deleteReportFromSupabase(r.id).catch(() => {});
-            continue;
-          }
-          const lIdx = localUsers.findIndex(l => l.id === r.id);
-          if (lIdx === -1) {
-            localUsers.unshift(r);
-            localChanged = true;
-          } else {
-            const remoteTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
-            const localTime = new Date(localUsers[lIdx].updatedAt || localUsers[lIdx].createdAt || 0).getTime();
-            if (remoteTime > localTime) {
-              localUsers[lIdx] = r;
-              localChanged = true;
-            }
-          }
-        }
-
-        // Upload any local reports that are not yet on Supabase Cloud
-        for (const l of localUsers) {
-          const isTestId = ['usr-rep-', 'rep-spoof-', 'rep-unverified-', 'user-keep-safe', 'rep-valid-flow'].some(prefix => l.id?.startsWith(prefix));
-          if (isTestId || l.isDemo || deletedIds.has(l.id)) continue;
-          if (!remoteMap.has(l.id)) {
-            syncReportToSupabase(l).catch(() => {});
-          }
-        }
-
-        if (localChanged) {
-          getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(localUsers));
-          dispatchStorageEvent();
-        }
-      } catch (err) {
-        console.warn('[REPLATE Storage] Background surplus sync error:', err);
-      }
-    })();
-
-    // 3. Pure Supabase Cloud Emergency Requests Sync (Bidirectional & Idempotent)
-    (async () => {
-      try {
-        const remoteRequests = await fetchRemoteEmergencyRequests().catch(() => []);
-        const localReqs = getEmergencyRequests();
-        const deletedEmgIds = getDeletedEmergencyIds();
-        const remoteReqMap = new Map();
-        for (const req of (remoteRequests || [])) {
-          if (req?.id) remoteReqMap.set(req.id, req);
-        }
-
-        let reqsChanged = false;
-        // Merge remote requests into local
-        for (const req of (remoteRequests || [])) {
-          // If deleted locally, never resurrect into localStorage!
-          if (deletedEmgIds.has(req.id)) {
-            deleteEmergencyRequestFromSupabase(req.id).catch(() => {});
-            continue;
-          }
-          const lIdx = localReqs.findIndex(l => l.id === req.id);
-          if (lIdx === -1) {
-            localReqs.unshift(req);
-            reqsChanged = true;
-          } else {
-            const remoteTime = new Date(req.updatedAt || req.createdAt || 0).getTime();
-            const localTime = new Date(localReqs[lIdx].updatedAt || localReqs[lIdx].createdAt || 0).getTime();
-            if (remoteTime > localTime) {
-              localReqs[lIdx] = req;
-              reqsChanged = true;
-            }
-          }
-        }
-
-        // Upload any local non-demo requests to Supabase Cloud
-        for (const l of localReqs) {
-          if (l.isDemo || deletedEmgIds.has(l.id)) continue;
-          if (!remoteReqMap.has(l.id)) {
-            syncEmergencyRequestToSupabase(l).catch(() => {});
-          }
-        }
-
-        if (reqsChanged) {
-          getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(localReqs));
-          dispatchStorageEvent();
-        }
-      } catch (err) {
-        console.warn('[REPLATE Storage] Background emergency sync error:', err);
-      }
-    })();
-
-    // 4. Pure Supabase Cloud Registered Users Sync (Bidirectional & Idempotent)
-    (async () => {
-      try {
-        const remoteUsers = await fetchRemoteUsers().catch(() => []);
-        const localUsers = getRegisteredUsers();
-        const localEmailSet = new Set(localUsers.map(u => (u.email || '').toLowerCase()));
-        let usersChanged = false;
-
-        for (const ru of remoteUsers) {
-          const email = (ru.email || '').toLowerCase();
-          if (email && !localEmailSet.has(email)) {
-            localUsers.push(ru);
-            localEmailSet.add(email);
-            usersChanged = true;
-          }
-        }
-
-        // Upload any local registered users that are not on Supabase Cloud
-        const remoteEmailSet = new Set(remoteUsers.map(ru => (ru.email || '').toLowerCase()));
-        for (const lu of localUsers) {
-          const email = (lu.email || '').toLowerCase();
-          if (email && !remoteEmailSet.has(email)) {
-            syncUserToSupabase(lu).catch(() => {});
-          }
-        }
-
-        if (usersChanged) {
-          getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
-          dispatchStorageEvent();
-        }
-      } catch (err) {
-        console.warn('[REPLATE Storage] Background user sync error:', err);
-      }
-    })();
-
-    // 5. Setup live Realtime listener
-    const cleanup = setupSupabaseRealtimeSubscriptions(
-      // On remote surplus change
-      (payload) => {
-        try {
-          const { eventType, new: newRow, old: oldRow } = payload;
-          const userReports = getUserReports();
-
-          if (eventType === 'DELETE' && oldRow?.id) {
-            recordDeletedReportId(oldRow.id);
-            const filtered = userReports.filter(r => r.id !== oldRow.id);
-            getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(filtered));
-          } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
-            const incoming = mapSupabaseRowToReport(newRow);
-            if (isReportDeleted(incoming.id)) return;
-            const idx = userReports.findIndex(r => r.id === incoming.id);
-            if (idx !== -1) {
-              userReports[idx] = incoming;
-            } else {
-              userReports.unshift(incoming);
-            }
-            getDataStore().setItem(STORAGE_KEYS.USER_REPORTS, JSON.stringify(userReports));
-          }
-          dispatchStorageEvent();
-        } catch (err) {
-          console.warn('[REPLATE Supabase Realtime] Error processing report event:', err);
-        }
-      },
-      // On remote emergency request change
-      (payload) => {
-        try {
-          const { eventType, new: newRow, old: oldRow } = payload;
-          const reqs = getEmergencyRequests();
-
-          if (eventType === 'DELETE' && oldRow?.id) {
-            recordDeletedEmergencyId(oldRow.id);
-            const filtered = reqs.filter(r => r.id !== oldRow.id);
-            getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(filtered));
-          } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
-            const incoming = mapRowToEmergencyRequest(newRow);
-            if (isEmergencyDeleted(incoming.id)) return;
-            const idx = reqs.findIndex(r => r.id === incoming.id);
-            if (idx !== -1) {
-              reqs[idx] = incoming;
-            } else {
-              reqs.unshift(incoming);
-            }
-            getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(reqs));
-          }
-          dispatchStorageEvent();
-        } catch (err) {
-          console.warn('[REPLATE Supabase Realtime] Error processing emergency event:', err);
-        }
-      },
-      // On remote user change
-      (payload) => {
-        try {
-          const { eventType, new: newRow } = payload;
-          if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
-            const localUsers = getRegisteredUsers();
-            const email = (newRow.email || '').toLowerCase();
-            const idx = localUsers.findIndex(u => (u.email || '').toLowerCase() === email || u.id === newRow.id);
-            const userObj = {
-              id: newRow.id,
-              username: (newRow.email || '').split('@')[0],
-              email: newRow.email,
-              password: newRow.password_hash?.startsWith('plain:') ? newRow.password_hash.replace('plain:', '') : (newRow.role === 'SUPPLIER' ? 'supplier123' : newRow.role === 'MITRA' ? 'mitra123' : 'admin123'),
-              name: newRow.full_name,
-              role: (newRow.role || 'supplier').toLowerCase(),
-              organization: newRow.role === 'SUPPLIER' ? 'Dapur Grand Catering' : 'Dapur Umum Mandiri',
-              avatar: newRow.role === 'SUPPLIER' ? '🏪' : newRow.role === 'MITRA' ? '🤝' : '👑',
-              badgeText: newRow.role === 'SUPPLIER' ? 'Penyedia Surplus' : newRow.role === 'MITRA' ? 'Mitra Penerima' : 'Admin Operasional',
-              createdAt: newRow.created_at
-            };
-
-            if (idx !== -1) {
-              localUsers[idx] = { ...localUsers[idx], ...userObj };
-            } else {
-              localUsers.push(userObj);
-            }
-            getDataStore().setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(localUsers));
-            dispatchStorageEvent();
-          }
-        } catch (err) {
-          console.warn('[REPLATE Supabase Realtime] Error processing user event:', err);
-        }
-      }
-    );
-
-    return cleanup;
+    await syncBackendSurplusToLocal().catch(() => {});
+    await syncBackendEmergencyToLocal().catch(() => {});
   } catch (err) {
-    console.warn('[REPLATE Supabase] Error during initial cloud sync:', err);
-    return () => {};
+    console.warn('[REPLATE Backend Sync] Error during periodic sync:', err);
+  }
+  return () => {};
+}
+
+// Backward compatible alias
+export const initSupabaseCloudSync = initBackendSync;
+
+/**
+ * Synchronize emergency food requests from live NestJS Backend API
+ */
+export async function syncBackendEmergencyToLocal() {
+  if (!isRealBrowserEnvironment()) return [];
+  try {
+    await ensureApiToken();
+    if (!api.getAuthToken()) return [];
+    const res = await api.emergency.findAll().catch(() => null);
+    const remoteReqs = Array.isArray(res) ? res : (res?.data || []);
+    if (!remoteReqs || remoteReqs.length === 0) return [];
+
+    const localReqs = getEmergencyRequests();
+    const reqMap = new Map();
+    for (const r of localReqs) {
+      reqMap.set(r.id, r);
+    }
+    for (const remote of remoteReqs) {
+      reqMap.set(remote.id, {
+        id: remote.id,
+        beneficiaryGroup: remote.beneficiaryGroup,
+        targetLocation: remote.targetLocation,
+        neededFoodType: remote.neededFoodType,
+        requiredPortions: remote.requiredPortions,
+        urgencyLevel: remote.urgencyLevel,
+        urgencyDeadline: remote.urgencyDeadline,
+        urgencyReason: remote.urgencyReason,
+        contactPerson: remote.contactPerson,
+        contactPhone: remote.contactPhone,
+        notes: remote.notes,
+        status: remote.status,
+        matchedSurplusId: remote.matchedSurplusId,
+        createdAt: remote.createdAt,
+        updatedAt: remote.updatedAt,
+      });
+    }
+    const merged = Array.from(reqMap.values());
+    getDataStore().setItem(STORAGE_KEYS.EMERGENCY_REQUESTS, JSON.stringify(merged));
+    dispatchStorageEvent();
+    return merged;
+  } catch (err) {
+    console.warn('[REPLATE Backend Sync] Error during emergency requests sync:', err);
+    return [];
   }
 }
 
-/**
- * Synchronize surplus listings with live NestJS Backend API on Render
- * Pulls all surplus listings from the backend and merges into local user reports
- */
 export async function syncBackendSurplusToLocal() {
   if (!isRealBrowserEnvironment()) return [];
   if (!api.isLiveApiEnabled()) return [];
