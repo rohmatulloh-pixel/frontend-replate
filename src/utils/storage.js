@@ -1318,7 +1318,7 @@ export function loginUser(identifier, password) {
 }
 
 /**
- * Asynchronously log in a user with Supabase Cloud real-time check fallback
+ * Asynchronously log in a user with live Backend API
  */
 export async function loginUserAsync(identifier, password) {
   let res = loginUser(identifier, password);
@@ -1950,7 +1950,7 @@ export function fulfillSOSBroadcast(broadcastId) {
 }
 
 /**
- * Synchronize local datasets with Supabase Cloud
+ * Synchronize local datasets with live Backend REST API + PostgreSQL
  * Fetches remote surplus reports & emergency requests, merges without data loss,
  * and attaches Realtime WebSocket listeners.
  */
