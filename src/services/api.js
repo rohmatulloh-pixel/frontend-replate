@@ -5,6 +5,11 @@
  */
 
 export function normalizeApiUrl(rawUrl) {
+  // If running in browser on Vercel deployment or dev server, route through same-origin /api/v1 proxy
+  // to avoid strict CORS misconfiguration on external VPS backend.
+  if (typeof window !== 'undefined' && (!rawUrl || rawUrl === '/api/v1' || (typeof rawUrl === 'string' && rawUrl.includes('replate.atsa.my.id')) || window.location.hostname.includes('vercel.app'))) {
+    return '/api/v1';
+  }
   if (!rawUrl || typeof rawUrl !== 'string') {
     return 'https://replate.atsa.my.id/api/v1';
   }
