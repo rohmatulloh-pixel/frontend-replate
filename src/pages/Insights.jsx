@@ -73,20 +73,45 @@ export default function Insights({ onNavigate, lang = getActiveLanguage() }) {
       </div>
 
       {backendInsights && (
-        <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-6 space-y-3 shadow-sm">
-          <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
-            <Lightbulb className="w-4 h-4 text-emerald-600" />
+        <div className="bg-emerald-50/90 rounded-3xl border border-emerald-200 p-6 sm:p-7 space-y-4 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-2.5 text-emerald-900 font-display font-black text-sm sm:text-base">
+            <div className="w-8 h-8 rounded-xl bg-emerald-200/60 flex items-center justify-center shrink-0">
+              <Lightbulb className="w-4 h-4 text-emerald-700" />
+            </div>
             <span>{isId ? 'Wawasan Analitik Server Backend PostgreSQL' : 'PostgreSQL Backend Server Analytics Insights'}</span>
           </div>
-          <p className="text-xs text-slate-700 leading-relaxed">
+          
+          <p className="text-xs sm:text-sm text-emerald-950 font-sans leading-relaxed">
             {backendInsights.summary || backendInsights.message || (isId ? 'Sistem mendeteksi tren surplus aktif terverifikasi dari seluruh rantai pasok katering & hotel.' : 'Live aggregated food waste insights active.')}
           </p>
-          {backendInsights.recommendations && (
-            <ul className="list-disc pl-5 text-xs text-slate-600 space-y-1">
-              {backendInsights.recommendations.map((rec, i) => (
-                <li key={i}>{typeof rec === 'string' ? rec : rec.text || JSON.stringify(rec)}</li>
-              ))}
-            </ul>
+
+          {backendInsights.recommendations && backendInsights.recommendations.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+              {backendInsights.recommendations.map((rec, i) => {
+                if (typeof rec === 'string') {
+                  return (
+                    <div key={i} className="p-4 rounded-2xl bg-white/90 border border-emerald-200/80 text-xs text-slate-700 shadow-2xs leading-relaxed">
+                      {rec}
+                    </div>
+                  );
+                }
+
+                const title = rec.title || rec.heading || (isId ? `Rekomendasi #${i + 1}` : `Insight #${i + 1}`);
+                const desc = rec.description || rec.desc || rec.text || (typeof rec === 'object' ? JSON.stringify(rec) : String(rec));
+
+                return (
+                  <div key={i} className="p-4 rounded-2xl bg-white border border-emerald-200/90 shadow-2xs space-y-1.5 transition-all hover:border-emerald-400">
+                    <div className="font-display font-extrabold text-xs sm:text-sm text-emerald-950 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" />
+                      <span>{title}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                      {desc}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
